@@ -1,0 +1,6 @@
+apiVersion: platform.example.org/v1alpha1
+kind: Bucket # Developer-facing Bucket Claim
+metadata:
+  name: myapp-bucket
+spec:
+  bucketName: myapp-artifacts-1234
