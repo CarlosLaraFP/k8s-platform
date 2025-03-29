@@ -23,7 +23,8 @@ helm-install:
 	helm upgrade --install $(APP_NAME) ./chart
 
 argocd-install:
-	kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml --create-namespace
+	kubectl create namespace argocd
+	kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 	kubectl wait --for=condition=available --timeout=180s deployment/argocd-server -n argocd
 	kubectl apply -f apps/argo-app-bucket.yaml
 
@@ -46,6 +47,6 @@ kind-delete:
 crossplane-delete:
 	kubectl delete -f infra/
 
-deploy: kind-create argocd-install crossplane-install
+deploy: kind-create crossplane-install
 
 destroy: helm-uninstall kind-delete crossplane-delete
