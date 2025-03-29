@@ -35,14 +35,22 @@ crossplane-install:
 	kubectl wait --for=condition=Available deployment/crossplane -n crossplane-system --timeout=120s
 	kubectl get pods -n crossplane-system
 	kubectl api-resources | grep crossplane
-	kubectl apply -f infra/
-	kubectl get crds
+	kubectl apply -f infra/s3-provider.yaml 
+	kubectl apply -f infra/dynamodb-provider.yaml
+#   kubectl create secret generic aws-secret -n crossplane-system --from-file=creds=./aws-credentials.txt
+	kubectl create secret generic my-secret --from-literal=aws_access_key_id=MOCK --from-literal=aws_secret_access_key=MOCK
+	kubectl apply -f infra/provider-config.yaml
+
+apply-resources:
+	kubectl apply -f infra/nosql-xrd.yaml --dry-run=client
+	kubectl apply -f infra/nosql-composition.yaml --dry-run=client
+	kubectl apply -f infra/nosql-claim.yaml --dry-run=client
 
 helm-uninstall:
 	helm uninstall $(APP_NAME)
 
 kind-delete:
-	kind delete cluster --name app-restart
+	kind delete cluster --name $(APP_NAME)
 
 crossplane-delete:
 	kubectl delete -f infra/
