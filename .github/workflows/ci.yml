@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Unit tests
+      run: make test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install KinD
+      run: make kind-install
+
+    - name: Create KinD Cluster -> Install ArgoCD -> Install Crossplane
+      run: make deploy
+
+    - name: Cleanup
+      if: always()
+      run: make destroy
