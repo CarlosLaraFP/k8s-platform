@@ -1,8 +1,47 @@
-apply:
-	kubectl apply -f infra/
+APP_NAME=k8s-platform
+IMAGE_NAME=$(APP_NAME):latest
 
-argo-app:
+test:
+	go mod tidy
+	go test ./... -v
+
+kind-install:
+	curl -Lo kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+	chmod +x kind
+	sudo mv kind /usr/local/bin/kind
+
+kind-create:
+	kind create cluster --name $(APP_NAME)
+
+docker:
+	docker build -t $(IMAGE_NAME) .
+
+kind-load:
+	kind load docker-image $(IMAGE_NAME) --name $(APP_NAME)
+
+helm-install:
+	helm upgrade --install $(APP_NAME) ./chart
+
+argocd-install:
+	kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml --create-namespace
+	kubectl wait --for=condition=available --timeout=180s deployment/argocd-server -n argocd
 	kubectl apply -f apps/argo-app-bucket.yaml
 
-clean:
+crossplane-install:
+	helm repo add crossplane-stable https://charts.crossplane.io/stable
+	helm install crossplane crossplane-stable/crossplane -n crossplane-system --create-namespace
+	kubectl wait --for=condition=Available deployment/crossplane -n crossplane-system --timeout=120s
+	kubectl apply -f infra/
+
+helm-uninstall:
+	helm uninstall $(APP_NAME)
+
+kind-delete:
+	kind delete cluster --name app-restart
+
+crossplane-delete:
 	kubectl delete -f infra/
+
+deploy: kind-create argocd-install crossplane-install
+
+destroy: helm-uninstall kind-delete crossplane-delete
