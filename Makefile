@@ -26,7 +26,7 @@ kind-load:
 	kind load docker-image $(IMAGE_NAME) --name $(APP_NAME)
 
 helm-install:
-	helm upgrade --install $(APP_NAME) ./chart
+	helm upgrade --install $(APP_NAME) ./chart --namespace=crossplane-system
 
 argocd-install:
 	kubectl create namespace argocd
@@ -56,7 +56,7 @@ apply-resources:
 	kubectl apply -f infra/nosql-claim.yaml
 
 helm-uninstall:
-	helm uninstall $(APP_NAME)
+	helm uninstall $(APP_NAME) --namespace=crossplane-system
 
 kind-delete:
 	kind delete cluster --name $(APP_NAME)
@@ -64,6 +64,6 @@ kind-delete:
 crossplane-delete:
 	kubectl delete -f infra/
 
-deploy: kind-create docker kind-load crossplane-install
+deploy: kind-create crossplane-install docker kind-load helm-install
 
 destroy: helm-uninstall kind-delete crossplane-delete
