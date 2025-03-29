@@ -28,6 +28,11 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.11.3
+
     - name: Install KinD
       run: make kind-install
 

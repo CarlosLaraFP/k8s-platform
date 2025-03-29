@@ -29,9 +29,13 @@ argocd-install:
 
 crossplane-install:
 	helm repo add crossplane-stable https://charts.crossplane.io/stable
+	helm repo update
 	helm install crossplane crossplane-stable/crossplane -n crossplane-system --create-namespace
 	kubectl wait --for=condition=Available deployment/crossplane -n crossplane-system --timeout=120s
+	kubectl get pods -n crossplane-system
+	kubectl api-resources | grep crossplane
 	kubectl apply -f infra/
+	kubectl get crds
 
 helm-uninstall:
 	helm uninstall $(APP_NAME)
