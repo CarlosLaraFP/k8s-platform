@@ -36,7 +36,7 @@ jobs:
     - name: Install KinD
       run: make kind-install
 
-    - name: Create KinD Cluster -> Install Crossplane
+    - name: Create KinD Cluster -> Load Custom Controller -> Install Crossplane
       run: make deploy
 
     - name: Cleanup

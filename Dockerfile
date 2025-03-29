@@ -1,12 +1,14 @@
 FROM golang:1.24 as builder
-WORKDIR /workspace
+
+WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -o manager main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o k8s-platform main.go
 
-FROM gcr.io/distroless/static:nonroot
-WORKDIR /
-COPY --from=builder /workspace/manager .
-USER nonroot:nonroot
-ENTRYPOINT ["/manager"]
+FROM alpine:latest
+RUN apk add --no-cache ca-certificates
+WORKDIR /root/
+COPY --from=builder /app/k8s-platform .
+
+ENTRYPOINT ["./k8s-platform"]
