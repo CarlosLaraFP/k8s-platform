@@ -50,7 +50,8 @@ func (r *NoSQLClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	if age.Seconds() >= float64(r.TTLSeconds) {
 		log.Info("deleting expired NoSQLClaim", "age", age.String())
-		DeletedClaims.Inc()
+
+		DeletedClaims.WithLabelValues().Inc()
 
 		if err := r.Delete(ctx, claim); err != nil {
 			log.Error(err, "failed to delete expired NoSQLClaim")
@@ -60,7 +61,7 @@ func (r *NoSQLClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 
-	SkippedClaims.Inc()
+	SkippedClaims.WithLabelValues().Inc()
 
 	remaining := time.Duration(r.TTLSeconds)*time.Second - age
 	log.Info("requeueing after", "remaining", remaining)

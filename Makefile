@@ -1,6 +1,12 @@
 APP_NAME=k8s-platform
 IMAGE_NAME=$(APP_NAME):latest
 
+build:
+	go build -o $(APP_NAME) main.go
+
+run:
+	go run main.go
+
 test:
 	go mod tidy
 	go test ./... -v
@@ -58,6 +64,6 @@ kind-delete:
 crossplane-delete:
 	kubectl delete -f infra/
 
-deploy: kind-create crossplane-install
+deploy: kind-create docker kind-load crossplane-install
 
 destroy: helm-uninstall kind-delete crossplane-delete

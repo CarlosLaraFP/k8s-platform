@@ -5,18 +5,20 @@ import (
 )
 
 var (
-	DeletedClaims = prometheus.NewCounter(
+	DeletedClaims = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "nosqlclaims_deleted_total",
 			Help: "Total number of expired NoSQLClaims deleted",
 		},
+		[]string{},
 	)
 
-	SkippedClaims = prometheus.NewCounter(
+	SkippedClaims = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "nosqlclaims_skipped_total",
 			Help: "Total number of NoSQLClaims skipped because TTL not met",
 		},
+		[]string{},
 	)
 
 	ReconcileDuration = prometheus.NewHistogram(
