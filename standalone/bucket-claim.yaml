@@ -1,10 +1,10 @@
 apiVersion: platform.example.org/v1alpha1
-kind: Bucket # Developer-facing Bucket Claim
+kind: BucketClaim # Developer-facing
 metadata:
   # 1. User creates one Claim: kind: Bucket
   # 2. Crossplane creates one XR: kind: XBucket
   # 3. Composition renders 2+ managed resources: Bucket, Policy, etc.
   # This is how Crossplane enables infra composition without the user needing to know what's inside.
-  name: myapp-bucket
+  name: platform-bucket
 spec:
-  bucketName: myapp-artifacts-1234
+  bucketName: platform-artifacts-1234

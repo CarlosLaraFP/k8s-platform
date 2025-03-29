@@ -8,8 +8,8 @@ spec:
     kind: XBucket  # XRD maps user input (via spec fields) to the corresponding composite resource
     plural: xbuckets
   claimNames:
-    kind: Bucket
-    plural: buckets
+    kind: BucketClaim
+    plural: bucketclaims
   versions:
     - name: v1alpha1
       served: true
