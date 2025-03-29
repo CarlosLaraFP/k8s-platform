@@ -42,9 +42,12 @@ crossplane-install:
 	kubectl apply -f infra/provider-config.yaml
 
 apply-resources:
-	kubectl apply -f infra/nosql-xrd.yaml --dry-run=client
-	kubectl apply -f infra/nosql-composition.yaml --dry-run=client
-	kubectl apply -f infra/nosql-claim.yaml --dry-run=client
+	kubectl apply -f infra/dev-user.yaml
+	kubectl auth can-i get buckets --as=dev-user --namespace=default
+	kubectl apply -f infra/functions/patch-and-transform.yaml
+	kubectl apply -f infra/nosql-xrd.yaml
+	kubectl apply -f infra/nosql-composition.yaml
+	kubectl apply -f infra/nosql-claim.yaml
 
 helm-uninstall:
 	helm uninstall $(APP_NAME)
