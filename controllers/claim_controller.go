@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -14,10 +15,11 @@ import (
 )
 
 const (
-	APIGroup   = "platform.example.org"
-	APIVersion = "v1alpha1"
-	ClaimName  = "Storage"
-	TTLSeconds = 3600
+	APIGroup           = "platform.example.org"
+	APIVersion         = "v1alpha1"
+	ClaimName          = "Storage"
+	TTLSeconds         = 600 // 10 minutes
+	CreationAnnotation = "platform.example.org/creationTimestamp"
 )
 
 type StorageReconciler struct {
@@ -27,6 +29,10 @@ type StorageReconciler struct {
 }
 
 func (r *StorageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	/*
+		retry.RetryOnConflict is only needed when we are performing update or patch operations on Kubernetes objects —
+		especially if those operations use .Update() or .Patch() on live objects that might change concurrently.
+	*/
 	start := time.Now()
 	defer func() {
 		ReconcileDuration.Observe(time.Since(start).Seconds())
@@ -51,20 +57,46 @@ func (r *StorageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	created := claim.GetCreationTimestamp()
-	age := time.Since(created.Time)
+	creationTimeStr, exists := claim.GetAnnotations()[CreationAnnotation] // will not panic even if annotations is nil
 
-	log.Info("reconciled", "claim", ClaimName, "age", age.String())
+	if !exists {
+		now := time.Now().Local().Format(time.RFC3339)
+		annotations := claim.GetAnnotations()
+		if annotations == nil {
+			annotations = map[string]string{}
+		}
+		annotations[CreationAnnotation] = now
+		claim.SetAnnotations(annotations)
 
+		if err := r.Update(ctx, claim); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to add creation annotation: %w", err)
+		}
+
+		UpdatedClaims.WithLabelValues().Inc()
+		// Update will trigger a new reconcile
+		return ctrl.Result{}, nil
+	}
+
+	creationTime, err := time.Parse(time.RFC3339, creationTimeStr)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("invalid creation timestamp: %w", err)
+	}
+
+	log.Info("reconciled", "claim", ClaimName, "age", creationTimeStr)
+
+	age := time.Since(creationTime)
+
+	// Check if claim is older than max age
 	if age.Seconds() >= float64(r.TTLSeconds) {
 		log.Info("deleting expired", "claim", ClaimName, "age", age.String())
 
-		DeletedClaims.WithLabelValues().Inc()
-
+		// Delete is idempotent
 		if err := r.Delete(ctx, claim); err != nil {
 			log.Error(err, "failed to delete expired Claim", "claim", ClaimName, "name", req.NamespacedName)
 			return ctrl.Result{}, err
 		}
+
+		DeletedClaims.WithLabelValues().Inc()
 
 		return ctrl.Result{}, nil
 	}
@@ -72,6 +104,7 @@ func (r *StorageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	SkippedClaims.WithLabelValues().Inc()
 
 	remaining := time.Duration(r.TTLSeconds)*time.Second - age
+
 	log.Info("requeueing after", "remaining", remaining)
 
 	return ctrl.Result{RequeueAfter: remaining}, nil
@@ -86,6 +119,6 @@ func (r *StorageReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	})
 	return ctrl.NewControllerManagedBy(mgr).
 		For(claim).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }

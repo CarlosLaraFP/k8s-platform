@@ -53,7 +53,7 @@ apply-resources:
 	kubectl apply -f infra/functions/patch-and-transform.yaml
 	kubectl apply -f infra/storage-xrd.yaml
 	kubectl apply -f infra/storage-composition.yaml
-	kubectl create storage --location=US
+	kubectl apply -f infra/storage-claim.yaml
 
 helm-uninstall:
 	helm uninstall $(APP_NAME) --namespace=crossplane-system
