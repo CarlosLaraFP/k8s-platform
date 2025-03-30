@@ -19,7 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// ✅ Define a minimal fake struct that mimics your NoSQLClaim CRD
+// Minimal fake struct that mimics our Claim CRD
 type FakeClaim struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -37,41 +37,49 @@ var fakeGVK = schema.GroupVersionKind{
 	Kind:    ClaimName,
 }
 
-func newTestClaim(name string, creationTime time.Time) *FakeClaim {
+func newTestClaim(name string, annotations map[string]string) *FakeClaim {
 	return &FakeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       ClaimName,
 			APIVersion: fmt.Sprintf("%s/%s", APIGroup, APIVersion),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:              name,
-			Namespace:         "default",
-			CreationTimestamp: metav1.NewTime(creationTime),
+			Name:        name,
+			Namespace:   "default",
+			Annotations: annotations,
 		},
 	}
 }
 
 func TestClaimReconciler_Reconcile(t *testing.T) {
-	now := time.Now()
+	now := time.Now().Local().Format(time.RFC3339)
+	expired := time.Now().Local().Add(-1 * time.Hour).Format(time.RFC3339)
 
 	tests := []struct {
 		name          string
 		claims        []client.Object
 		ttl           int64
+		expectUpdated bool
 		expectDeleted bool
 		expectSkipped bool
 	}{
 		{
 			name:          "deletes expired claim",
-			claims:        []client.Object{newTestClaim("expired", now.Add(-4*time.Hour))},
+			claims:        []client.Object{newTestClaim("expired", map[string]string{CreationAnnotation: expired})},
 			ttl:           TTLSeconds,
 			expectDeleted: true,
 		},
 		{
 			name:          "skips valid claim",
-			claims:        []client.Object{newTestClaim("valid", now.Add(-30*time.Minute))},
+			claims:        []client.Object{newTestClaim("valid", map[string]string{CreationAnnotation: now})},
 			ttl:           TTLSeconds,
 			expectSkipped: true,
+		},
+		{
+			name:          "updates new claim",
+			claims:        []client.Object{newTestClaim("new", nil)},
+			ttl:           TTLSeconds,
+			expectUpdated: true,
 		},
 		{
 			name: "no claim exists",
@@ -87,6 +95,7 @@ func TestClaimReconciler_Reconcile(t *testing.T) {
 			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(tt.claims...).Build()
 
 			// Reset metrics between runs
+			UpdatedClaims.Reset()
 			DeletedClaims.Reset()
 			SkippedClaims.Reset()
 			ReconcileDuration = prometheus.NewHistogram(
@@ -123,6 +132,12 @@ func TestClaimReconciler_Reconcile(t *testing.T) {
 
 			_, err := r.Reconcile(context.Background(), req)
 			require.NoError(t, err)
+
+			if tt.expectUpdated {
+				require.Equal(t, float64(1), testutil.ToFloat64(UpdatedClaims.WithLabelValues()))
+			} else {
+				require.Equal(t, float64(0), testutil.ToFloat64(UpdatedClaims.WithLabelValues()))
+			}
 
 			if tt.expectDeleted {
 				require.Equal(t, float64(1), testutil.ToFloat64(DeletedClaims.WithLabelValues()))
