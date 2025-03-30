@@ -50,11 +50,16 @@ helm-install:
 
 apply:
 	kubectl apply -f infra/dev-user.yaml
-#kubectl auth can-i get buckets --as=dev-user --namespace=default
+	kubectl apply -f infra/dev-rolebinding.yaml
+	kubectl auth can-i get storage --as=dev-user --namespace=default
 	kubectl apply -f infra/functions/patch-and-transform.yaml
 	kubectl apply -f infra/storage-xrd.yaml
 	kubectl apply -f infra/storage-composition.yaml
 	kubectl apply -f infra/storage-claim.yaml
+
+metrics-local:
+	kubectl port-forward -n crossplane-system deployment/k8s-platform 8080:8080
+	curl -s http://localhost:8080/metrics | grep claims
 
 helm-uninstall:
 	helm uninstall $(APP_NAME) --namespace=crossplane-system

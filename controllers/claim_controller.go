@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -29,10 +30,6 @@ type StorageReconciler struct {
 }
 
 func (r *StorageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	/*
-		retry.RetryOnConflict is only needed when we are performing update or patch operations on Kubernetes objects —
-		especially if those operations use .Update() or .Patch() on live objects that might change concurrently.
-	*/
 	start := time.Now()
 	defer func() {
 		ReconcileDuration.Observe(time.Since(start).Seconds())
@@ -60,21 +57,33 @@ func (r *StorageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	creationTimeStr, exists := claim.GetAnnotations()[CreationAnnotation] // will not panic even if annotations is nil
 
 	if !exists {
-		now := time.Now().Local().Format(time.RFC3339)
-		annotations := claim.GetAnnotations()
-		if annotations == nil {
-			annotations = map[string]string{}
-		}
-		annotations[CreationAnnotation] = now
-		claim.SetAnnotations(annotations)
+		// Retry loop to avoid conflict errors when updating annotations, especially when a Claim is first created
+		err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+			// Re-fetch the latest version
+			latest := &unstructured.Unstructured{}
+			latest.SetGroupVersionKind(claim.GroupVersionKind())
+			if err := r.Get(ctx, req.NamespacedName, latest); err != nil {
+				return err
+			}
 
-		if err := r.Update(ctx, claim); err != nil {
+			annotations := latest.GetAnnotations()
+			if annotations == nil {
+				annotations = map[string]string{}
+			}
+			annotations[CreationAnnotation] = time.Now().Local().Format(time.RFC3339)
+			latest.SetAnnotations(annotations)
+			// the Update will trigger a new event, which will be skipped and requeue will be scheduled
+			return r.Update(ctx, latest)
+		})
+
+		if err != nil {
+			log.Error(err, "failed to add creation annotation with retry")
 			return ctrl.Result{}, fmt.Errorf("failed to add creation annotation: %w", err)
 		}
 
 		UpdatedClaims.WithLabelValues().Inc()
-		// Update will trigger a new reconcile
-		return ctrl.Result{}, nil
+		// Requeue immediately — next loop will add the creation timestamp
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	creationTime, err := time.Parse(time.RFC3339, creationTimeStr)
