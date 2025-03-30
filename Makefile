@@ -19,15 +19,6 @@ kind-install:
 kind-create:
 	kind create cluster --name $(APP_NAME)
 
-docker:
-	docker build -t $(IMAGE_NAME) .
-
-kind-load:
-	kind load docker-image $(IMAGE_NAME) --name $(APP_NAME)
-
-helm-install:
-	helm upgrade --install $(APP_NAME) ./chart --namespace=crossplane-system
-
 argocd-install:
 	kubectl create namespace argocd
 	kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
@@ -47,9 +38,18 @@ crossplane-install:
 	kubectl create secret generic aws-secret --from-literal=aws_access_key_id=MOCK --from-literal=aws_secret_access_key=MOCK
 	kubectl apply -f infra/provider-config.yaml
 
+docker:
+	docker build -t $(IMAGE_NAME) .
+
+kind-load:
+	kind load docker-image $(IMAGE_NAME) --name $(APP_NAME)
+
+helm-install:
+	helm upgrade --install $(APP_NAME) ./chart --namespace=crossplane-system
+
 apply-resources:
 	kubectl apply -f infra/dev-user.yaml
-	kubectl auth can-i get buckets --as=dev-user --namespace=default
+#kubectl auth can-i get buckets --as=dev-user --namespace=default
 	kubectl apply -f infra/functions/patch-and-transform.yaml
 	kubectl apply -f infra/storage-xrd.yaml
 	kubectl apply -f infra/storage-composition.yaml
