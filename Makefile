@@ -62,9 +62,9 @@ helm-uninstall:
 kind-delete:
 	kind delete cluster --name $(APP_NAME)
 
-crossplane-delete:
+unapply:
 	kubectl delete -f infra/
 
 deploy: kind-create crossplane-install docker kind-load helm-install
 
-destroy: helm-uninstall kind-delete crossplane-delete
+destroy: helm-uninstall kind-delete
