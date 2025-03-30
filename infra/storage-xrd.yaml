@@ -1,15 +1,15 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
-  name: nosqls.platform.example.org
+  name: storage.platform.example.org
 spec:
   group: platform.example.org
   names:
-    kind: NoSQL
-    plural: nosqls
+    kind: AWSStorage
+    plural: awsstorage
   claimNames:
-    kind: NoSQLClaim
-    plural: nosqlclaim
+    kind: Storage
+    plural: storage
   versions:
   - name: v1alpha1
     schema:

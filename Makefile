@@ -44,16 +44,16 @@ crossplane-install:
 	kubectl apply -f infra/s3-provider.yaml 
 	kubectl apply -f infra/dynamodb-provider.yaml
 #   kubectl create secret generic aws-secret -n crossplane-system --from-file=creds=./aws-credentials.txt
-	kubectl create secret generic my-secret --from-literal=aws_access_key_id=MOCK --from-literal=aws_secret_access_key=MOCK
+	kubectl create secret generic aws-secret --from-literal=aws_access_key_id=MOCK --from-literal=aws_secret_access_key=MOCK
 	kubectl apply -f infra/provider-config.yaml
 
 apply-resources:
 	kubectl apply -f infra/dev-user.yaml
 	kubectl auth can-i get buckets --as=dev-user --namespace=default
 	kubectl apply -f infra/functions/patch-and-transform.yaml
-	kubectl apply -f infra/nosql-xrd.yaml
-	kubectl apply -f infra/nosql-composition.yaml
-	kubectl apply -f infra/nosql-claim.yaml
+	kubectl apply -f infra/storage-xrd.yaml
+	kubectl apply -f infra/storage-composition.yaml
+	kubectl create storage --location=US
 
 helm-uninstall:
 	helm uninstall $(APP_NAME) --namespace=crossplane-system

@@ -1,0 +1,7 @@
+apiVersion: platform.example.org/v1alpha1
+kind: Storage
+metadata:
+  name: aws-storage
+spec:
+  location: US
+# Storage is our claim-facing kind. We pass location directly under spec.

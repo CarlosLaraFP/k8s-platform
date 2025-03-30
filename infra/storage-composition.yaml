@@ -5,7 +5,7 @@ metadata:
 spec:
   compositeTypeRef:
     apiVersion: platform.example.org/v1alpha1
-    kind: NoSQL
+    kind: AWSStorage
   mode: Pipeline
   pipeline:
   - step: patch-and-transform
