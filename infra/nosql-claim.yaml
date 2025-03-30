@@ -1,7 +1,0 @@
-apiVersion: platform.example.org/v1alpha1
-kind: NoSQLClaim
-metadata:
-  name: nosql-database
-spec:
-  location: US
-# NoSQLClaim is your claim-facing kind. You pass location directly under spec.

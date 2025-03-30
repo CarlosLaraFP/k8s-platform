@@ -46,7 +46,7 @@ func main() {
 	if err = (&controllers.NoSQLClaimReconciler{
 		Client:     mgr.GetClient(),
 		Log:        ctrl.Log.WithName("controllers").WithName("NoSQLClaim"),
-		TTLSeconds: 10800, // default TTL = 3 hours
+		TTLSeconds: 3600, // default TTL = 1 hour
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "NoSQLClaim")
 		os.Exit(1)

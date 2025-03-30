@@ -4,15 +4,5 @@ metadata:
   name: nosqlclaim-reaper
 rules:
   - apiGroups: ["platform.example.org"]
-    resources: ["nosqlclaims"]
-    verbs: ["get", "list", "watch", "delete"]
-
-  # Optional: Allow status subresource updates
-  - apiGroups: ["platform.example.org"]
-    resources: ["nosqlclaims/status"]
-    verbs: ["get", "update", "patch"]
-
-  # Optional: Emit Events (e.g., on deletion)
-  - apiGroups: [""]
-    resources: ["events"]
-    verbs: ["create", "patch"]
+    resources: ["storage", "awsstorage"]
+    verbs: ["*"]
