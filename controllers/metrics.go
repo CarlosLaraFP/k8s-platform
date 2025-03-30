@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
 var (
@@ -39,5 +40,6 @@ var (
 )
 
 func RegisterMetrics() {
-	prometheus.MustRegister(DeletedClaims, SkippedClaims, ReconcileDuration)
+	// controller-runtime runs its own Prometheus metrics server using a private registry
+	metrics.Registry.MustRegister(UpdatedClaims, DeletedClaims, SkippedClaims, ReconcileDuration)
 }
