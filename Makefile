@@ -34,6 +34,8 @@ crossplane-install:
 	kubectl api-resources | grep crossplane
 	kubectl apply -f infra/s3-provider.yaml 
 	kubectl apply -f infra/dynamodb-provider.yaml
+	kubectl wait --for=condition=Healthy provider/provider-aws-dynamodb --timeout=180s
+	kubectl wait --for=condition=Installed provider/provider-aws-dynamodb --timeout=180s
 	kubectl create secret generic aws-secret -n crossplane-system --from-file=creds=./mock-aws-credentials.txt
 	kubectl apply -f infra/provider-config.yaml
 
