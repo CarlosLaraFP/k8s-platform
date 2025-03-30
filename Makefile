@@ -34,8 +34,7 @@ crossplane-install:
 	kubectl api-resources | grep crossplane
 	kubectl apply -f infra/s3-provider.yaml 
 	kubectl apply -f infra/dynamodb-provider.yaml
-#   kubectl create secret generic aws-secret -n crossplane-system --from-file=creds=./aws-credentials.txt
-	kubectl create secret generic aws-secret --from-literal=aws_access_key_id=MOCK --from-literal=aws_secret_access_key=MOCK
+	kubectl create secret generic aws-secret -n crossplane-system --from-file=creds=./mock-aws-credentials.txt
 	kubectl apply -f infra/provider-config.yaml
 
 docker:
@@ -47,7 +46,7 @@ kind-load:
 helm-install:
 	helm upgrade --install $(APP_NAME) ./chart --namespace=crossplane-system
 
-apply-resources:
+apply:
 	kubectl apply -f infra/dev-user.yaml
 #kubectl auth can-i get buckets --as=dev-user --namespace=default
 	kubectl apply -f infra/functions/patch-and-transform.yaml
