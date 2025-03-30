@@ -1,8 +1,8 @@
 APP_NAME=k8s-platform
-IMAGE_NAME=$(APP_NAME):latest
+IMAGE_NAME=claim-controller:latest
 
 build:
-	go build -o $(APP_NAME) main.go
+	go build -o claim-controller main.go
 
 run:
 	go run main.go
@@ -58,7 +58,7 @@ apply:
 	kubectl apply -f infra/storage-claim.yaml
 
 metrics-local:
-	kubectl port-forward -n crossplane-system deployment/k8s-platform 8080:8080
+	kubectl port-forward -n crossplane-system deployment/claim-controller 8080:8080
 	curl -s http://localhost:8080/metrics | grep claims
 
 helm-uninstall:

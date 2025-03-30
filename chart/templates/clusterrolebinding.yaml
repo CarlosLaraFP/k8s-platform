@@ -1,12 +1,12 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: nosqlclaim-reaper-binding
+  name: claim-reaper-binding
 subjects:
   - kind: ServiceAccount
-    name: nosqlclaim-reaper
+    name: claim-reaper
     namespace: crossplane-system
 roleRef:
   kind: ClusterRole
-  name: nosqlclaim-reaper
+  name: claim-reaper
   apiGroup: rbac.authorization.k8s.io
