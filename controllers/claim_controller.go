@@ -10,51 +10,59 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
-type NoSQLClaimReconciler struct {
+const (
+	APIGroup   = "platform.example.org"
+	APIVersion = "v1alpha1"
+	ClaimName  = "Storage"
+	TTLSeconds = 3600
+)
+
+type StorageReconciler struct {
 	client.Client
 	Log        logr.Logger
 	TTLSeconds int64
 }
 
-func (r *NoSQLClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *StorageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	start := time.Now()
 	defer func() {
 		ReconcileDuration.Observe(time.Since(start).Seconds())
 	}()
 
-	log := r.Log.WithValues("nosqlclaim", req.NamespacedName)
+	log := r.Log.WithValues(ClaimName, req.NamespacedName)
 
 	claim := &unstructured.Unstructured{}
 	claim.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "platform.example.org",
-		Version: "v1alpha1",
-		Kind:    "NoSQLClaim",
+		Group:   APIGroup,
+		Version: APIVersion,
+		Kind:    ClaimName,
 	})
 
 	err := r.Get(ctx, req.NamespacedName, claim)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("NoSQLClaim not found, skipping")
+			log.Info("Claim not found, skipping", "claim", ClaimName, "name", req.NamespacedName)
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "failed to get NoSQLClaim")
+		log.Error(err, "failed to get Claim", "claim", ClaimName, "name", req.NamespacedName)
 		return ctrl.Result{}, err
 	}
 
 	created := claim.GetCreationTimestamp()
 	age := time.Since(created.Time)
 
-	log.Info("reconciled NoSQLClaim", "age", age.String())
+	log.Info("reconciled", "claim", ClaimName, "age", age.String())
 
 	if age.Seconds() >= float64(r.TTLSeconds) {
-		log.Info("deleting expired NoSQLClaim", "age", age.String())
+		log.Info("deleting expired", "claim", ClaimName, "age", age.String())
 
 		DeletedClaims.WithLabelValues().Inc()
 
 		if err := r.Delete(ctx, claim); err != nil {
-			log.Error(err, "failed to delete expired NoSQLClaim")
+			log.Error(err, "failed to delete expired Claim", "claim", ClaimName, "name", req.NamespacedName)
 			return ctrl.Result{}, err
 		}
 
@@ -69,13 +77,15 @@ func (r *NoSQLClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	return ctrl.Result{RequeueAfter: remaining}, nil
 }
 
-func (r *NoSQLClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *StorageReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	claim := &unstructured.Unstructured{}
+	claim.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   APIGroup,
+		Version: APIVersion,
+		Kind:    ClaimName,
+	})
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&unstructured.Unstructured{
-			Object: map[string]any{
-				"apiVersion": "platform.example.org/v1alpha1",
-				"kind":       "NoSQLClaim",
-			},
-		}).
+		For(claim).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
 		Complete(r)
 }

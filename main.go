@@ -35,7 +35,7 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:           scheme,
 		LeaderElection:   enableLeaderElection,
-		LeaderElectionID: "platform.example.org",
+		LeaderElectionID: controllers.APIGroup,
 		Metrics:          server.Options{BindAddress: metricsAddr},
 	})
 	if err != nil {
@@ -43,12 +43,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.NoSQLClaimReconciler{
+	if err = (&controllers.StorageReconciler{
 		Client:     mgr.GetClient(),
-		Log:        ctrl.Log.WithName("controllers").WithName("NoSQLClaim"),
-		TTLSeconds: 3600, // default TTL = 1 hour
+		Log:        ctrl.Log.WithName("controllers").WithName(controllers.ClaimName),
+		TTLSeconds: controllers.TTLSeconds, // default TTL = 1 hour
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "NoSQLClaim")
+		setupLog.Error(err, "unable to create controller", "controller", controllers.ClaimName)
 		os.Exit(1)
 	}
 

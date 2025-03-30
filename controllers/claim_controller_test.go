@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -19,28 +20,28 @@ import (
 )
 
 // ✅ Define a minimal fake struct that mimics your NoSQLClaim CRD
-type FakeNoSQLClaim struct {
+type FakeClaim struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              map[string]string `json:"spec,omitempty"`
 }
 
-func (f *FakeNoSQLClaim) DeepCopyObject() runtime.Object {
+func (f *FakeClaim) DeepCopyObject() runtime.Object {
 	copy := *f
 	return &copy
 }
 
 var fakeGVK = schema.GroupVersionKind{
-	Group:   "platform.example.org",
-	Version: "v1alpha1",
-	Kind:    "NoSQLClaim",
+	Group:   APIGroup,
+	Version: APIVersion,
+	Kind:    ClaimName,
 }
 
-func newTestClaim(name string, creationTime time.Time) *FakeNoSQLClaim {
-	return &FakeNoSQLClaim{
+func newTestClaim(name string, creationTime time.Time) *FakeClaim {
+	return &FakeClaim{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "NoSQLClaim",
-			APIVersion: "platform.example.org/v1alpha1",
+			Kind:       ClaimName,
+			APIVersion: fmt.Sprintf("%s/%s", APIGroup, APIVersion),
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              name,
@@ -50,7 +51,7 @@ func newTestClaim(name string, creationTime time.Time) *FakeNoSQLClaim {
 	}
 }
 
-func TestNoSQLClaimReconciler_Reconcile(t *testing.T) {
+func TestClaimReconciler_Reconcile(t *testing.T) {
 	now := time.Now()
 
 	tests := []struct {
@@ -63,25 +64,25 @@ func TestNoSQLClaimReconciler_Reconcile(t *testing.T) {
 		{
 			name:          "deletes expired claim",
 			claims:        []client.Object{newTestClaim("expired", now.Add(-4*time.Hour))},
-			ttl:           10800,
+			ttl:           TTLSeconds,
 			expectDeleted: true,
 		},
 		{
 			name:          "skips valid claim",
 			claims:        []client.Object{newTestClaim("valid", now.Add(-30*time.Minute))},
-			ttl:           10800,
+			ttl:           TTLSeconds,
 			expectSkipped: true,
 		},
 		{
 			name: "no claim exists",
-			ttl:  10800,
+			ttl:  TTLSeconds,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			scheme := runtime.NewScheme()
-			scheme.AddKnownTypeWithName(fakeGVK, &FakeNoSQLClaim{})
+			scheme.AddKnownTypeWithName(fakeGVK, &FakeClaim{})
 
 			c := fake.NewClientBuilder().WithScheme(scheme).WithObjects(tt.claims...).Build()
 
@@ -90,14 +91,14 @@ func TestNoSQLClaimReconciler_Reconcile(t *testing.T) {
 			SkippedClaims.Reset()
 			ReconcileDuration = prometheus.NewHistogram(
 				prometheus.HistogramOpts{
-					Name:    "nosqlclaim_reconcile_duration_seconds",
-					Help:    "Duration of NoSQLClaim reconciliation",
+					Name:    "claim_reconcile_duration_seconds",
+					Help:    "Duration of Claim reconciliation",
 					Buckets: prometheus.DefBuckets,
 				},
 			)
 
 			logger := zap.New(zap.UseDevMode(true))
-			r := &NoSQLClaimReconciler{
+			r := &StorageReconciler{
 				Client:     c,
 				Log:        logger,
 				TTLSeconds: tt.ttl,
