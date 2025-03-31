@@ -15,7 +15,6 @@ terraform:
 	cd terraform && terraform init
 	cd terraform && terraform plan
 	cd terraform && terraform apply --auto-approve
-	cd terraform && aws eks update-kubeconfig --name $(terraform output -raw cluster_name)
 
 kind-install:
 	curl -Lo kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
@@ -81,8 +80,7 @@ terraform-helm-clean:
 	terraform apply -target helm_release.platform -auto-approve
 
 terraform-destroy:
-	kubectl config delete-cluster $(APP_NAME)
-	terraform destroy -auto-approve
+	cd terraform && terraform destroy -auto-approve
 
 deploy: kind-create crossplane-install docker kind-load helm-install
 
