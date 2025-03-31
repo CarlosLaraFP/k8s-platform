@@ -156,17 +156,6 @@ resource "docker_registry_image" "app" {
   keep_remotely = false # Prevent deletion on destroy
 }
 
-provider "kubectl" {
-  host                   = module.eks.cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-  load_config_file       = false
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
-  }
-}
-
 provider "helm" {
   kubernetes {
     host                   = module.eks.cluster_endpoint
@@ -193,8 +182,35 @@ resource "helm_release" "crossplane" {
   depends_on = [module.eks]
 }
 
+resource "null_resource" "install_providers" {
+  depends_on = [helm_release.crossplane]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      kubectl wait --for=condition=Available deployment/crossplane -n crossplane-system --timeout=120s
+	  kubectl apply -f ${path.module}/../infra/s3-provider.yaml 
+	  kubectl apply -f ${path.module}/../infra/dynamodb-provider.yaml
+	  kubectl wait --for=condition=Healthy provider/provider-aws-dynamodb --timeout=180s
+	  kubectl wait --for=condition=Installed provider/provider-aws-dynamodb --timeout=180s
+	  kubectl create secret generic aws-secret -n crossplane-system --from-file=creds=${path.module}/../aws-credentials.txt
+	  kubectl apply -f ${path.module}/../infra/provider-config.yaml
+      
+	  kubectl apply -f ${path.module}/../infra/functions/patch-and-transform.yaml
+	  kubectl apply -f ${path.module}/../infra/storage-xrd.yaml
+	  kubectl apply -f ${path.module}/../infra/storage-composition.yaml
+	  kubectl apply -f ${path.module}/../infra/storage-claim.yaml
+    EOT
+  }
+}
+
 resource "helm_release" "platform" {
-  depends_on = [module.eks, aws_ecr_repository.claim-controller, docker_image.controller, helm_release.crossplane]
+  depends_on = [
+    module.eks, 
+    aws_ecr_repository.claim-controller, 
+    docker_image.controller, 
+    helm_release.crossplane, 
+    null_resource.install_providers
+  ]
 
   name       = "claim-controller"
   chart      = "${path.module}/../chart"
