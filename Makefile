@@ -11,7 +11,7 @@ test:
 	go mod tidy
 	go test ./... -v
 
-terraform:
+terraform-apply:
 	cd terraform && terraform init
 	cd terraform && terraform plan
 	cd terraform && terraform apply --auto-approve

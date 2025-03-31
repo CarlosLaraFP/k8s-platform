@@ -31,5 +31,5 @@ make apply
 make destroy
 
 # For cloud testing with EKS
-make terraform
+make terraform-apply
 make terraform-destroy # cleanup once you are done
