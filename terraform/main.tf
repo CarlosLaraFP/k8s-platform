@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "3.0.2"
+    }
+  }
+}
+
 provider "aws" {
   region = var.region
 }
@@ -76,12 +85,6 @@ module "eks" {
   subnet_ids = module.vpc.private_subnets
 }
 
-#module "disabled_eks" {
-#  source = "terraform-aws-modules/eks/aws"
-#
-#  create = false
-#}
-
 ################################################################################
 # Supporting Resources
 ################################################################################
@@ -110,17 +113,95 @@ module "vpc" {
   }
 }
 
+resource "aws_iam_role" "irsa" {
+  assume_role_policy = jsonencode({
+    Statement = [{
+      Action = "sts:AssumeRoleWithWebIdentity"
+      Effect = "Allow"
+      Principal = {
+        Federated = module.eks.oidc_provider_arn
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecr_pull" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.irsa.name
+}
+
 resource "aws_ecr_repository" "claim-controller" {
   name = local.ecr_repo
 }
+data "aws_caller_identity" "current" {}
+data "aws_ecr_authorization_token" "token" {}
 
-resource "helm_release" "custom_chart" {
-  depends_on = [module.eks, aws_ecr_repository.crossplane]
+provider "docker" {
+  registry_auth {
+    address  = "${data.aws_caller_identity.current.account_id}.dkr.ecr.${var.region}.amazonaws.com"
+    username = data.aws_ecr_authorization_token.token.user_name
+    password = data.aws_ecr_authorization_token.token.password
+  }
+}
+
+resource "docker_image" "controller" {
+  name = "${aws_ecr_repository.claim-controller.repository_url}:latest"
+  build {
+    context = "${path.module}/.."
+  }
+}
+
+resource "docker_registry_image" "app" {
+  name          = docker_image.controller.name
+  keep_remotely = false # Prevent deletion on destroy
+}
+
+provider "kubectl" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  load_config_file       = false
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+  }
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+    exec {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+    }
+  }
+}
+
+resource "helm_release" "crossplane" {
+  name       = "crossplane"
+  repository = "https://charts.crossplane.io/stable"
+  chart      = "crossplane"
+  namespace  = "crossplane-system"
+  create_namespace = true
+  wait               = true
+  timeout            = 120
+  atomic             = true
+  cleanup_on_fail    = true
+
+  depends_on = [module.eks]
+}
+
+resource "helm_release" "platform" {
+  depends_on = [module.eks, aws_ecr_repository.claim-controller, docker_image.controller, helm_release.crossplane]
 
   name       = "claim-controller"
   chart      = "${path.module}/../chart"
   namespace  = "crossplane-system"
   create_namespace = true
+  atomic = true
+  cleanup_on_fail = true
 
   values = [
     file("${path.module}/../chart/values.yaml")
@@ -134,5 +215,10 @@ resource "helm_release" "custom_chart" {
   set {
     name  = "image.pullPolicy"
     value = "Always" # pull from ECR
+  }
+
+  set {
+    name = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = aws_iam_role.irsa.arn
   }
 }

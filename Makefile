@@ -12,16 +12,10 @@ test:
 	go test ./... -v
 
 terraform:
-	terraform init
-	terraform plan
-	terraform apply --auto-approve
-	aws sts get-caller-identity
-	aws eks update-kubeconfig --name $(terraform output -raw cluster_name)
-
-ecr:
-	aws ecr get-login-password | docker login --username AWS --password-stdin $(terraform output -raw ecr_repo_url)
-	docker tag $(IMAGE_NAME) $(terraform output -raw ecr_repo_url):latest
-	docker push $(terraform output -raw ecr_repo_url):latest
+	cd terraform && terraform init
+	cd terraform && terraform plan
+	cd terraform && terraform apply --auto-approve
+	cd terraform && aws eks update-kubeconfig --name $(terraform output -raw cluster_name)
 
 kind-install:
 	curl -Lo kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
@@ -81,6 +75,10 @@ kind-delete:
 
 unapply:
 	kubectl delete -f infra/
+
+terraform-helm-clean:
+	cd terraform && terraform destroy -target helm_release.platform -auto-approve
+	terraform apply -target helm_release.platform -auto-approve
 
 terraform-destroy:
 	kubectl config delete-cluster $(APP_NAME)
