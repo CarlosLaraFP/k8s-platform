@@ -1,1 +1,4 @@
 aws-credentials.txt
+standalone/cluster-admin-binding.yaml
+terraform/.terraform
+terraform/.terraform.lock.hcl

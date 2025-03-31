@@ -25,6 +25,11 @@ This is part of a larger project: Building a cloud-agnostic developer self-servi
 ## Setup
 
 ```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply --auto-approve
+
 make deploy # after cloning the repo, replace mock-aws-credentials.txt
 make apply
 make destroy
