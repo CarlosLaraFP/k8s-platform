@@ -1,23 +1,23 @@
-# ⚙️ Crossplane AWS Resource Lifecycle Controller
+# Cloud-Agnostic Developer Self-Service Platform
 
-This project showcases a **production-grade platform engineering controller** built on Kubernetes and Crossplane. It automates the lifecycle of **ephemeral AWS infrastructure**, such as S3 buckets and DynamoDB tables, based on TTL (time-to-live) logic defined at the claim level.
-
-This is part of a larger project: Building a cloud-agnostic developer self-service platform with Crossplane, ArgoCD, AWS, and Terraform.
+Built with Terraform, AWS, Kubernetes, Crossplane, and Helm. It includes a Kubebuilder controller that automates the lifecycle of **ephemeral AWS infrastructure**, such as S3 buckets and DynamoDB tables, based on TTL (time-to-live) logic defined at the claim level.
 
 ---
 
 ## 🚀 Features
 
+- **Terraform** to provision:
+    - Karpenter-based EKS Auto cluster
+    - Docker image lifecycle management with ECR
+    - Crossplane Helm chart for self-service IaC
+    - Custom Kubernetes controller Helm chart
+    - RBAC & least privilege access
 - **Crossplane-native AWS resource provisioning** via `Composition` and `XRD` definitions  
 - **Custom Kubebuilder controller** to automatically delete transient claims after `T` hours  
 - **Prometheus metrics** exported for reconciliation counts, durations, and cleanup results  
-- **Helm-packaged** for seamless deployment into any cluster  
-- **Terraform-powered EKS Auto provisioning** with Helm installing:
-  - Crossplane
-  - ArgoCD (for GitOps)
-  - This controller
+- **Helm-packaged** for seamless deployment into any Kubernetes cluster
 - **Makefile-driven development & GitHub Actions CI**
-- **Tested on local KinD** and Terraform-provisioned EKS Auto
+- **Tested on local KinD** and on Terraform-provisioned EKS Auto with real AWS credentials
 - **Unit tests using `controller-runtime` fake client** and Prometheus test harness
 
 ---

@@ -182,11 +182,13 @@ resource "helm_release" "crossplane" {
   depends_on = [module.eks]
 }
 
-resource "null_resource" "install_providers" {
+resource "null_resource" "kubectl_apply" {
   depends_on = [helm_release.crossplane]
 
   provisioner "local-exec" {
     command = <<-EOT
+      aws eks update-kubeconfig --region ${var.region} --name ${var.cluster_name}
+
       kubectl wait --for=condition=Available deployment/crossplane -n crossplane-system --timeout=120s
 	  kubectl apply -f ${path.module}/../infra/s3-provider.yaml 
 	  kubectl apply -f ${path.module}/../infra/dynamodb-provider.yaml
@@ -209,7 +211,7 @@ resource "helm_release" "platform" {
     aws_ecr_repository.claim-controller, 
     docker_image.controller, 
     helm_release.crossplane, 
-    null_resource.install_providers
+    null_resource.kubectl_apply
   ]
 
   name       = "claim-controller"
