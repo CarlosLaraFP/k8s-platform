@@ -12,12 +12,12 @@ This is part of a larger project: Building a cloud-agnostic developer self-servi
 - **Custom Kubebuilder controller** to automatically delete transient claims after `T` hours  
 - **Prometheus metrics** exported for reconciliation counts, durations, and cleanup results  
 - **Helm-packaged** for seamless deployment into any cluster  
-- **Terraform-powered EKS cluster provisioning** with Helm installing:
+- **Terraform-powered EKS Auto provisioning** with Helm installing:
   - Crossplane
   - ArgoCD (for GitOps)
   - This controller
 - **Makefile-driven development & GitHub Actions CI**
-- **Tested on local KinD** and production-grade EKS environments
+- **Tested on local KinD** and Terraform-provisioned EKS Auto
 - **Unit tests using `controller-runtime` fake client** and Prometheus test harness
 
 ---
@@ -25,11 +25,11 @@ This is part of a larger project: Building a cloud-agnostic developer self-servi
 ## Setup
 
 ```bash
-cd terraform
-terraform init
-terraform plan
-terraform apply --auto-approve
-
+# For local testing with KinD
 make deploy # after cloning the repo, replace mock-aws-credentials.txt
 make apply
 make destroy
+
+# For cloud testing with EKS
+make terraform
+make terraform-destroy # cleanup once you are done
