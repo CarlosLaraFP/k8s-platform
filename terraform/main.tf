@@ -205,7 +205,7 @@ resource "null_resource" "kubectl_apply" {
   }
 }
 
-resource "helm_release" "platform" {
+resource "helm_release" "claim-controller" {
   depends_on = [
     module.eks, 
     aws_ecr_repository.claim-controller, 
