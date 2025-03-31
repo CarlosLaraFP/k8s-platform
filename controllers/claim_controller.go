@@ -13,44 +13,42 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
+
+var storageClaim = &unstructured.Unstructured{}
+var computeClaim = &unstructured.Unstructured{}
 
 const (
 	APIGroup           = "platform.example.org"
 	APIVersion         = "v1alpha1"
-	ClaimName          = "Storage"
 	TTLSeconds         = 600 // 10 minutes
 	CreationAnnotation = "platform.example.org/creationTimestamp"
 )
 
-type StorageReconciler struct {
+type ClaimReconciler struct {
 	client.Client
 	Log        logr.Logger
 	TTLSeconds int64
 }
 
-func (r *StorageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	start := time.Now()
 	defer func() {
 		ReconcileDuration.Observe(time.Since(start).Seconds())
 	}()
 
-	log := r.Log.WithValues(ClaimName, req.NamespacedName)
+	log := r.Log.WithValues("Claim", req.NamespacedName)
 
 	claim := &unstructured.Unstructured{}
-	claim.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   APIGroup,
-		Version: APIVersion,
-		Kind:    ClaimName,
-	})
-
 	err := r.Get(ctx, req.NamespacedName, claim)
+
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("Claim not found, skipping", "claim", ClaimName, "name", req.NamespacedName)
+			log.Info("Claim not found, skipping", "Claim", req.NamespacedName)
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "failed to get Claim", "claim", ClaimName, "name", req.NamespacedName)
+		log.Error(err, "failed to get Claim", "Claim", req.NamespacedName)
 		return ctrl.Result{}, err
 	}
 
@@ -61,7 +59,7 @@ func (r *StorageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Re-fetch the latest version
 			latest := &unstructured.Unstructured{}
-			latest.SetGroupVersionKind(claim.GroupVersionKind())
+
 			if err := r.Get(ctx, req.NamespacedName, latest); err != nil {
 				return err
 			}
@@ -91,17 +89,17 @@ func (r *StorageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, fmt.Errorf("invalid creation timestamp: %w", err)
 	}
 
-	log.Info("reconciled", "claim", ClaimName, "age", creationTimeStr)
+	log.Info("reconciled", "Claim", req.NamespacedName, "age", creationTimeStr)
 
 	age := time.Since(creationTime)
 
 	// Check if claim is older than max age
 	if age.Seconds() >= float64(r.TTLSeconds) {
-		log.Info("deleting expired", "claim", ClaimName, "age", age.String())
+		log.Info("deleting expired", "Claim", req.NamespacedName, "age", age.String())
 
 		// Delete is idempotent
 		if err := r.Delete(ctx, claim); err != nil {
-			log.Error(err, "failed to delete expired Claim", "claim", ClaimName, "name", req.NamespacedName)
+			log.Error(err, "failed to delete expired Claim", "Claim", req.NamespacedName)
 			return ctrl.Result{}, err
 		}
 
@@ -119,15 +117,20 @@ func (r *StorageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	return ctrl.Result{RequeueAfter: remaining}, nil
 }
 
-func (r *StorageReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	claim := &unstructured.Unstructured{}
-	claim.SetGroupVersionKind(schema.GroupVersionKind{
+func (r *ClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	storageClaim.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   APIGroup,
 		Version: APIVersion,
-		Kind:    ClaimName,
+		Kind:    "Storage",
+	})
+	computeClaim.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   APIGroup,
+		Version: APIVersion,
+		Kind:    "Compute",
 	})
 	return ctrl.NewControllerManagedBy(mgr).
-		For(claim).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
+		For(storageClaim).
+		Watches(computeClaim, &handler.EnqueueRequestForObject{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
 		Complete(r)
 }

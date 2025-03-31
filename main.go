@@ -43,12 +43,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.StorageReconciler{
+	if err = (&controllers.ClaimReconciler{
 		Client:     mgr.GetClient(),
-		Log:        ctrl.Log.WithName("claim-controller").WithName(controllers.ClaimName),
-		TTLSeconds: controllers.TTLSeconds, // default TTL = 1 hour
+		Log:        ctrl.Log.WithName("claim-controller"),
+		TTLSeconds: controllers.TTLSeconds,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "claim-controller", controllers.ClaimName)
+		setupLog.Error(err, "unable to create controller")
 		os.Exit(1)
 	}
 
