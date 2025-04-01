@@ -1,0 +1,6 @@
+apiVersion: platform.example.org/v1alpha1
+kind: Storage
+metadata:
+  name: aws-storage-argocd
+spec:
+  location: US
