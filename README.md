@@ -2,9 +2,8 @@
 
 [![CI](https://github.com/CarlosLaraFP/k8s-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/CarlosLaraFP/k8s-platform/actions)
 
-Built with Terraform, AWS, Kubernetes, Crossplane, and Helm. It includes a Kubebuilder controller that automates the lifecycle of **ephemeral AWS infrastructure**, such as S3 buckets and DynamoDB tables, based on TTL (time-to-live) logic defined at the claim level.
+Developer self-service platform built with Crossplane on Karpenter-based AWS EKS Auto. Core infrastructure managed with Terraform & ArgoCD and user-created cloud resources managed via Crossplane Claims. This includes a Helm-packaged custom Kubernetes controller to automate the lifecycle of ephemeral AWS resources based on TTL logic defined at the Claim level.
 
----
 ![Screenshot](solution-architecture.png)
 ---
 
