@@ -18,6 +18,7 @@ Built with Terraform, AWS, Kubernetes, Crossplane, and Helm. It includes a Kubeb
 - **Custom Kubebuilder controller** to automatically delete transient claims after `T` hours  
 - **Prometheus metrics** exported for reconciliation counts, durations, and cleanup results  
 - **Helm-packaged** for seamless deployment into any Kubernetes cluster
+- **ArgoCD-driven GitOps** to keep EKS resources up-to-date
 - **Makefile-driven development & GitHub Actions CI**
 - **Tested on local KinD** and on Terraform-provisioned EKS Auto with real AWS credentials
 - **Unit tests using `controller-runtime` fake client** and Prometheus test harness
