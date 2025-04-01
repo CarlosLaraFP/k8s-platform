@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/util/retry"
@@ -26,6 +25,8 @@ const (
 	CreationAnnotation = "platform.example.org/creationTimestamp"
 )
 
+var claims = []string{"Storage", "Compute"}
+
 type ClaimReconciler struct {
 	client.Client
 	Log        logr.Logger
@@ -41,15 +42,32 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	log := r.Log.WithValues("Claim", req.NamespacedName)
 
 	claim := &unstructured.Unstructured{}
-	err := r.Get(ctx, req.NamespacedName, claim)
+	var err error
+	var claimSchema schema.GroupVersionKind
+
+	for _, c := range claims {
+		claimSchema = schema.GroupVersionKind{
+			Group:   APIGroup,
+			Version: APIVersion,
+			Kind:    c,
+		}
+		claim.SetGroupVersionKind(claimSchema)
+
+		err = r.Get(ctx, req.NamespacedName, claim)
+
+		if err == nil {
+			break
+		}
+	}
 
 	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("Claim not found, skipping", "Claim", req.NamespacedName)
+		if client.IgnoreNotFound(err) != nil {
+			log.Info("Claim schema not found", "Claim", req.NamespacedName)
 			return ctrl.Result{}, nil
+		} else {
+			log.Error(err, "failed to get Claim", "Claim", req.NamespacedName)
+			return ctrl.Result{}, err
 		}
-		log.Error(err, "failed to get Claim", "Claim", req.NamespacedName)
-		return ctrl.Result{}, err
 	}
 
 	creationTimeStr, exists := claim.GetAnnotations()[CreationAnnotation] // will not panic even if annotations is nil
@@ -59,11 +77,11 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Re-fetch the latest version
 			latest := &unstructured.Unstructured{}
+			latest.SetGroupVersionKind(claimSchema)
 
 			if err := r.Get(ctx, req.NamespacedName, latest); err != nil {
 				return err
 			}
-
 			annotations := latest.GetAnnotations()
 			if annotations == nil {
 				annotations = map[string]string{}

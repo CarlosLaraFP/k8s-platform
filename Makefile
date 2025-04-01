@@ -37,10 +37,17 @@ crossplane-install:
 	kubectl wait --for=condition=Available deployment/crossplane -n crossplane-system --timeout=120s
 	kubectl get pods -n crossplane-system
 	kubectl api-resources | grep crossplane
+	kubectl apply -f infra/ec2-provider.yaml
 	kubectl apply -f infra/s3-provider.yaml 
 	kubectl apply -f infra/dynamodb-provider.yaml
 	kubectl wait --for=condition=Healthy provider/provider-aws-dynamodb --timeout=180s
 	kubectl wait --for=condition=Installed provider/provider-aws-dynamodb --timeout=180s
+
+crossplane-provider:
+	kubectl create secret generic aws-secret -n crossplane-system --from-file=creds=./aws-credentials.txt
+	kubectl apply -f infra/provider-config.yaml
+
+crossplane-provider-ci:
 	kubectl create secret generic aws-secret -n crossplane-system --from-file=creds=./mock-aws-credentials.txt
 	kubectl apply -f infra/provider-config.yaml
 
@@ -54,13 +61,13 @@ helm-install:
 	helm upgrade --install $(APP_NAME) ./chart --namespace=crossplane-system
 
 apply:
-	kubectl apply -f infra/dev-user.yaml
-	kubectl apply -f infra/dev-rolebinding.yaml
-	kubectl auth can-i get storage --as=dev-user --namespace=default
 	kubectl apply -f infra/functions/patch-and-transform.yaml
 	kubectl apply -f infra/storage-xrd.yaml
 	kubectl apply -f infra/storage-composition.yaml
 	kubectl apply -f infra/storage-claim.yaml
+	kubectl apply -f infra/compute-xrd.yaml
+	kubectl apply -f infra/compute-composition.yaml
+	kubectl apply -f infra/compute-claim.yaml
 
 metrics-local:
 	kubectl port-forward -n crossplane-system deployment/claim-controller 8080:8080
@@ -82,6 +89,8 @@ terraform-helm-clean:
 terraform-destroy:
 	cd terraform && terraform destroy -auto-approve
 
-deploy: kind-create crossplane-install docker kind-load helm-install
+deploy-ci: kind-create crossplane-install crossplane-provider-ci docker kind-load helm-install
+
+deploy: kind-create crossplane-install crossplane-provider docker kind-load helm-install
 
 destroy: helm-uninstall kind-delete

@@ -1,0 +1,37 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: ec2-instance
+spec:
+  compositeTypeRef:
+    apiVersion: platform.example.org/v1alpha1
+    kind: AWSCompute
+  mode: Pipeline
+  pipeline:
+  - step: patch-and-transform
+    functionRef:
+      name: function-patch-and-transform
+    input:
+      apiVersion: pt.fn.crossplane.io/v1beta1
+      kind: Resources
+      resources:
+        - name: ec2Instance
+          base:
+            apiVersion: ec2.aws.upbound.io/v1beta2
+            kind: Instance
+            spec:
+              forProvider:
+                instanceType: t2.micro
+                region: us-west-2
+              providerConfigRef:
+                name: default
+          patches:
+            - type: FromCompositeFieldPath
+              fromFieldPath: "spec.location"
+              toFieldPath: "spec.forProvider.region"
+              transforms:
+                - type: map
+                  map:
+                    EU: "eu-north-1"
+                    US: "us-west-2"
+        

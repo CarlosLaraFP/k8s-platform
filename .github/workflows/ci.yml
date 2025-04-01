@@ -37,7 +37,7 @@ jobs:
       run: make kind-install
 
     - name: Deploy all Crossplane resources
-      run: make deploy
+      run: make deploy-ci
 
     - name: Cleanup
       if: always()

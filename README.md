@@ -26,7 +26,7 @@ Built with Terraform, AWS, Kubernetes, Crossplane, and Helm. It includes a Kubeb
 
 ```bash
 # For local testing with KinD
-make deploy # after cloning the repo, replace mock-aws-credentials.txt
+make deploy # after cloning the repo, replace mock-aws-credentials.txt with aws-credentials.txt
 make apply
 make destroy
 
