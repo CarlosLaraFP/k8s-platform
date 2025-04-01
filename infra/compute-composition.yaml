@@ -17,12 +17,13 @@ spec:
       resources:
         - name: ec2Instance
           base:
-            apiVersion: ec2.aws.upbound.io/v1beta2
+            apiVersion: ec2.aws.upbound.io/v1beta1
             kind: Instance
             spec:
               forProvider:
                 instanceType: t2.micro
                 region: us-west-2
+                ami: ami-0f9d441b5d66d5f31
               providerConfigRef:
                 name: default
           patches:

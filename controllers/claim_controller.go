@@ -61,13 +61,12 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	if err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			log.Info("Claim schema not found", "Claim", req.NamespacedName)
+		if client.IgnoreNotFound(err) == nil {
+			log.Info("Claim not found", "Claim", req.NamespacedName)
 			return ctrl.Result{}, nil
-		} else {
-			log.Error(err, "failed to get Claim", "Claim", req.NamespacedName)
-			return ctrl.Result{}, err
 		}
+		log.Error(err, "failed to get Claim", "Claim", req.NamespacedName)
+		return ctrl.Result{}, err
 	}
 
 	creationTimeStr, exists := claim.GetAnnotations()[CreationAnnotation] // will not panic even if annotations is nil
@@ -88,7 +87,8 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 			annotations[CreationAnnotation] = time.Now().Local().Format(time.RFC3339)
 			latest.SetAnnotations(annotations)
-			// the Update will trigger a new event, which will be skipped and requeue will be scheduled
+
+			// the Update will trigger a new event
 			return r.Update(ctx, latest)
 		})
 
@@ -98,8 +98,8 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 
 		UpdatedClaims.WithLabelValues().Inc()
-		// Requeue immediately — next loop will add the creation timestamp
-		return ctrl.Result{Requeue: true}, nil
+
+		return ctrl.Result{}, nil
 	}
 
 	creationTime, err := time.Parse(time.RFC3339, creationTimeStr)
@@ -115,7 +115,7 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if age.Seconds() >= float64(r.TTLSeconds) {
 		log.Info("deleting expired", "Claim", req.NamespacedName, "age", age.String())
 
-		// Delete is idempotent
+		// Delete creates a new event (safely idempotent)
 		if err := r.Delete(ctx, claim); err != nil {
 			log.Error(err, "failed to delete expired Claim", "Claim", req.NamespacedName)
 			return ctrl.Result{}, err

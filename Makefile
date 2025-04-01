@@ -52,7 +52,7 @@ kind-load:
 	kind load docker-image $(IMAGE_NAME) --name $(APP_NAME)
 
 helm-install:
-	helm upgrade --install $(APP_NAME) ./chart --namespace=crossplane-system
+	helm upgrade --install claim-controller ./chart --namespace=crossplane-system
 
 apply:
 	kubectl apply -f infra/functions/patch-and-transform.yaml
@@ -74,7 +74,7 @@ metrics-local:
 	curl -s http://localhost:8080/metrics | grep claims
 
 helm-uninstall:
-	helm uninstall $(APP_NAME) --namespace=crossplane-system
+	helm uninstall claim-controller --namespace=crossplane-system
 
 kind-delete:
 	kind delete cluster --name $(APP_NAME)

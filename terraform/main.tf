@@ -190,26 +190,32 @@ resource "null_resource" "kubectl_apply" {
       aws eks update-kubeconfig --region ${var.region} --name ${var.cluster_name}
 
       kubectl wait --for=condition=Available deployment/crossplane -n crossplane-system --timeout=120s
-	  kubectl apply -f ${path.module}/../infra/s3-provider.yaml 
-	  kubectl apply -f ${path.module}/../infra/dynamodb-provider.yaml
+	    kubectl apply -f ${path.module}/../infra/s3-provider.yaml 
+	    kubectl apply -f ${path.module}/../infra/dynamodb-provider.yaml
       kubectl apply -f ${path.module}/../infra/ec2-provider.yaml
-	  kubectl wait --for=condition=Healthy provider/provider-aws-dynamodb --timeout=180s
-	  kubectl wait --for=condition=Installed provider/provider-aws-dynamodb --timeout=180s
-	  kubectl create secret generic aws-secret -n crossplane-system --from-file=creds=${path.module}/../aws-credentials.txt
-	  kubectl apply -f ${path.module}/../infra/provider-config.yaml
+	    kubectl wait --for=condition=Healthy provider/provider-aws-dynamodb --timeout=180s
+      kubectl wait --for=condition=Installed provider/provider-aws-dynamodb --timeout=180s
+      kubectl create secret generic aws-secret -n crossplane-system --from-file=creds=${path.module}/../aws-credentials.txt
+      kubectl apply -f ${path.module}/../infra/provider-config.yaml
       
-	  kubectl apply -f ${path.module}/../infra/functions/patch-and-transform.yaml
-	  kubectl apply -f ${path.module}/../infra/storage-xrd.yaml
-	  kubectl apply -f ${path.module}/../infra/storage-composition.yaml
-	  kubectl apply -f ${path.module}/../infra/storage-claim.yaml
+      kubectl apply -f ${path.module}/../infra/functions/patch-and-transform.yaml
+      sleep 1
+      kubectl apply -f ${path.module}/../infra/storage-xrd.yaml
+      sleep 1
+      kubectl apply -f ${path.module}/../infra/storage-composition.yaml
+      sleep 1
+      kubectl apply -f ${path.module}/../infra/storage-claim.yaml
+      sleep 1
       kubectl apply -f ${path.module}/../infra/compute-xrd.yaml
-	  kubectl apply -f ${path.module}/../infra/compute-composition.yaml
-	  kubectl apply -f ${path.module}/../infra/compute-claim.yaml
+      sleep 1
+      kubectl apply -f ${path.module}/../infra/compute-composition.yaml
+      sleep 1
+      kubectl apply -f ${path.module}/../infra/compute-claim.yaml
 
       kubectl create namespace argocd
       kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
       kubectl wait --for=condition=available --timeout=180s deployment/argocd-server -n argocd
-	  kubectl apply -f ${path.module}/../infra/argocd-app.yaml
+	    kubectl apply -f ${path.module}/../infra/argocd-app.yaml
     EOT
   }
 }
