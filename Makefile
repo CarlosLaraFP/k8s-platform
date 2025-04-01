@@ -67,7 +67,10 @@ argocd-install:
 	kubectl create namespace argocd
 	kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 	kubectl wait --for=condition=available --timeout=180s deployment/argocd-server -n argocd
+	kubectl apply -f infra/argocd-project.yaml
 	kubectl apply -f infra/argocd-app.yaml
+	argocd app get k8s-platform
+	argocd app sync k8s-platform
 
 metrics-local:
 	kubectl port-forward -n crossplane-system deployment/claim-controller 8080:8080
