@@ -1,0 +1,6 @@
+apiVersion: platform.example.org/v1alpha1
+kind: Compute
+metadata:
+  name: aws-compute
+spec:
+  location: US

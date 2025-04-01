@@ -4,5 +4,5 @@ metadata:
   name: claim-reaper
 rules:
   - apiGroups: ["platform.example.org"]
-    resources: ["storage", "awsstorage"]
+    resources: ["storage", "awsstorage", "compute", "awscompute"]
     verbs: ["*"]

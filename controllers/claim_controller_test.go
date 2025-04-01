@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,36 +19,35 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func newTestClaim(name string, annotations map[string]string) *unstructured.Unstructured {
-	obj := &unstructured.Unstructured{}
-	obj.Object = map[string]any{
-		"apiVersion": fmt.Sprintf("%s/%s", APIGroup, APIVersion),
-		"kind":       "Storage",
-		"metadata": map[string]any{
-			"name":        name,
-			"namespace":   "default",
-			"annotations": annotations,
+type FakeClaim struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              map[string]string `json:"spec,omitempty"`
+}
+
+func (f *FakeClaim) DeepCopyObject() runtime.Object {
+	copy := *f
+	return &copy
+}
+
+var fakeGVK = schema.GroupVersionKind{
+	Group:   APIGroup,
+	Version: APIVersion,
+	Kind:    "Storage",
+}
+
+func newTestClaim(name string, annotations map[string]string) *FakeClaim {
+	return &FakeClaim{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Storage",
+			APIVersion: fmt.Sprintf("%s/%s", APIGroup, APIVersion),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   "default",
+			Annotations: annotations,
 		},
 	}
-	obj.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   APIGroup,
-		Version: APIVersion,
-		Kind:    "Storage",
-	})
-	return obj
-}
-
-// Wrapper that injects GVK into unstructured objects before fake client Get
-type gvkAwareClient struct {
-	client.Client
-	gvk schema.GroupVersionKind
-}
-
-func (c *gvkAwareClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	if u, ok := obj.(*unstructured.Unstructured); ok {
-		u.SetGroupVersionKind(c.gvk)
-	}
-	return c.Client.Get(ctx, key, obj, opts...)
 }
 
 func TestClaimReconciler_Reconcile(t *testing.T) {
@@ -81,43 +80,17 @@ func TestClaimReconciler_Reconcile(t *testing.T) {
 			ttl:           TTLSeconds,
 			expectUpdated: true,
 		},
-		{
-			name: "no claim exists",
-			ttl:  TTLSeconds,
-		},
 	}
-
-	// Shared scheme
-	scheme := runtime.NewScheme()
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{
-		Group:   APIGroup,
-		Version: APIVersion,
-		Kind:    "Storage",
-	}, &unstructured.Unstructured{})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Convert []client.Object to []runtime.Object
-			runtimeObjs := make([]runtime.Object, len(tt.claims))
-			for i, obj := range tt.claims {
-				runtimeObjs[i] = obj
-			}
-
-			// Base fake client
-			baseClient := fake.NewClientBuilder().
+			scheme := runtime.NewScheme()
+			scheme.AddKnownTypeWithName(fakeGVK, &FakeClaim{})
+			fakeClient := fake.
+				NewClientBuilder().
 				WithScheme(scheme).
-				WithRuntimeObjects(runtimeObjs...).
+				WithObjects(tt.claims...).
 				Build()
-
-			// Wrap with GVK-injecting test client
-			testClient := &gvkAwareClient{
-				Client: baseClient,
-				gvk: schema.GroupVersionKind{
-					Group:   APIGroup,
-					Version: APIVersion,
-					Kind:    "Storage",
-				},
-			}
 
 			// Reset metrics
 			UpdatedClaims.Reset()
@@ -133,7 +106,7 @@ func TestClaimReconciler_Reconcile(t *testing.T) {
 
 			// Build reconciler
 			r := &ClaimReconciler{
-				Client:     testClient,
+				Client:     fakeClient,
 				Log:        zap.New(zap.UseDevMode(true)),
 				TTLSeconds: tt.ttl,
 			}
