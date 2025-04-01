@@ -64,21 +64,6 @@ module "eks" {
         }
       }
     }
-    /*
-    dev-user = {
-      principal_arn = "arn:aws:iam::${var.aws_account_id}:user/${var.aws_iam_user}"
-      policy_associations = {
-        admin_policy = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-          username = "${var.aws_iam_user}"
-          access_scope = {
-            namespaces = ["*"]
-            type       = "namespace"
-          }
-        }
-      }
-    }
-    */
   }
   
   vpc_id     = module.vpc.vpc_id
