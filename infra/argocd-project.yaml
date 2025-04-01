@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: k8s-platform
+  namespace: argocd
+spec:
+  description: Project for managing the Kubernetes platform via GitOps
+  sourceRepos:
+    - https://github.com/CarlosLaraFP/k8s-platform.git
+  destinations:
+    - namespace: '*'
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
