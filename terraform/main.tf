@@ -189,13 +189,9 @@ resource "null_resource" "kubectl_apply" {
       sleep 1
       kubectl apply -f ${path.module}/../infra/storage-composition.yaml
       sleep 1
-      kubectl apply -f ${path.module}/../infra/storage-claim.yaml
-      sleep 1
       kubectl apply -f ${path.module}/../infra/compute-xrd.yaml
       sleep 1
       kubectl apply -f ${path.module}/../infra/compute-composition.yaml
-      sleep 1
-      kubectl apply -f ${path.module}/../infra/compute-claim.yaml
 
       kubectl create namespace argocd
       kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml

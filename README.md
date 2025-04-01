@@ -5,6 +5,8 @@
 Built with Terraform, AWS, Kubernetes, Crossplane, and Helm. It includes a Kubebuilder controller that automates the lifecycle of **ephemeral AWS infrastructure**, such as S3 buckets and DynamoDB tables, based on TTL (time-to-live) logic defined at the claim level.
 
 ---
+![Screenshot](solution-architecture.png)
+---
 
 ## 🚀 Features
 
