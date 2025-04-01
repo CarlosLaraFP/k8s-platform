@@ -15,9 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
 
-var storageClaim = &unstructured.Unstructured{}
-var computeClaim = &unstructured.Unstructured{}
-
 const (
 	APIGroup           = "platform.example.org"
 	APIVersion         = "v1alpha1"
@@ -35,6 +32,7 @@ type ClaimReconciler struct {
 
 func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	start := time.Now()
+	// defer because it's unknown a prior where exactly this method will return
 	defer func() {
 		ReconcileDuration.Observe(time.Since(start).Seconds())
 	}()
@@ -56,23 +54,27 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		err = r.Get(ctx, req.NamespacedName, claim)
 
 		if err == nil {
+			if !claim.GetDeletionTimestamp().IsZero() {
+				// Already being deleted, skip processing
+				return ctrl.Result{}, nil
+			}
 			break
 		}
 	}
 
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
-			log.Info("Claim not found", "Claim", req.NamespacedName)
+			log.Info("Claim not found")
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "failed to get Claim", "Claim", req.NamespacedName)
+		log.Error(err, "failed to get Claim")
 		return ctrl.Result{}, err
 	}
 
 	creationTimeStr, exists := claim.GetAnnotations()[CreationAnnotation] // will not panic even if annotations is nil
 
 	if !exists {
-		// Retry loop to avoid conflict errors when updating annotations, especially when a Claim is first created
+		// Retry loop to avoid conflict errors when updating annotations
 		err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 			// Re-fetch the latest version
 			latest := &unstructured.Unstructured{}
@@ -97,6 +99,7 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			return ctrl.Result{}, fmt.Errorf("failed to add creation annotation: %w", err)
 		}
 
+		log.Info("added creation annotation")
 		UpdatedClaims.WithLabelValues().Inc()
 
 		return ctrl.Result{}, nil
@@ -106,9 +109,6 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("invalid creation timestamp: %w", err)
 	}
-
-	log.Info("reconciled", "Claim", req.NamespacedName, "age", creationTimeStr)
-
 	age := time.Since(creationTime)
 
 	// Check if claim is older than max age
@@ -130,25 +130,39 @@ func (r *ClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	remaining := time.Duration(r.TTLSeconds)*time.Second - age
 
-	log.Info("requeueing after", "remaining", remaining)
+	log.Info("reconciled", "age", creationTimeStr, "requeueing after", remaining)
 
 	return ctrl.Result{RequeueAfter: remaining}, nil
 }
 
 func (r *ClaimReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	storageClaim.SetGroupVersionKind(schema.GroupVersionKind{
+	storageObj := &unstructured.Unstructured{}
+	storageObj.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   APIGroup,
 		Version: APIVersion,
 		Kind:    "Storage",
 	})
-	computeClaim.SetGroupVersionKind(schema.GroupVersionKind{
+
+	computeObj := &unstructured.Unstructured{}
+	computeObj.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   APIGroup,
 		Version: APIVersion,
 		Kind:    "Compute",
 	})
+
 	return ctrl.NewControllerManagedBy(mgr).
-		For(storageClaim).
-		Watches(computeClaim, &handler.EnqueueRequestForObject{}).
+		For(storageObj).
+		Watches(computeObj, &handler.EnqueueRequestForObject{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
 		Complete(r)
 }
+
+/*
+For(base, builder.WithPredicates(predicate.NewPredicateFuncs(func(obj client.Object) bool {
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	return (gvk.Group == APIGroup && gvk.Version == APIVersion &&
+		(gvk.Kind == "Storage" || gvk.Kind == "Compute"))
+})))
+
+Watches(computeObj, handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &Storage{}))
+*/
