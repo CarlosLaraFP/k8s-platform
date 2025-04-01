@@ -16,6 +16,6 @@ variable "aws_account_id" {
 }
 
 variable "aws_iam_user" {
-    description = "Name of the IAM User (after 'aws configure' it can be obtained from sts get caller identity)"
+    description = "Name of the IAM User (after 'aws configure' it can be obtained from aws sts get-caller-identity)"
     type = string
 }
