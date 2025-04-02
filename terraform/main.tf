@@ -184,13 +184,9 @@ resource "null_resource" "kubectl_apply" {
       kubectl apply -f ${path.module}/../infra/provider-config.yaml
       
       kubectl apply -f ${path.module}/../infra/functions/patch-and-transform.yaml
-      sleep 1
       kubectl apply -f ${path.module}/../infra/storage-xrd.yaml
-      sleep 1
       kubectl apply -f ${path.module}/../infra/storage-composition.yaml
-      sleep 1
       kubectl apply -f ${path.module}/../infra/compute-xrd.yaml
-      sleep 1
       kubectl apply -f ${path.module}/../infra/compute-composition.yaml
 
       kubectl create namespace argocd
