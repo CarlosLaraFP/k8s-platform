@@ -3,18 +3,20 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
+	v1 "function-docker-build/input/v1beta1"
 	"os"
 	"os/exec"
 	"time"
 
-	"function-docker-build/input/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/crossplane/function-sdk-go/errors"
 	"github.com/crossplane/function-sdk-go/logging"
 	fnv1 "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/crossplane/function-sdk-go/request"
+	"github.com/crossplane/function-sdk-go/resource"
+	"github.com/crossplane/function-sdk-go/resource/composed"
 	"github.com/crossplane/function-sdk-go/response"
 )
 
@@ -31,13 +33,37 @@ func (f *Function) RunFunction(_ context.Context, req *fnv1.RunFunctionRequest) 
 	f.log.Info("Running function", "tag", req.GetMeta().GetTag())
 	f.log.Info("Request", "input", req.String())
 
+	// Create a response to the request. This copies the desired state and
+	// pipeline context from the request to the response.
 	rsp := response.To(req, response.DefaultTTL)
 
 	xr, err := request.GetObservedCompositeResource(req)
 	if err != nil {
+		// You can set a custom status condition on the claim. This
+		// allows you to communicate with the user.
+		response.ConditionFalse(rsp, "FunctionSuccess", "InternalError").
+			WithMessage("Something went wrong at GetObservedCompositeResource").
+			TargetCompositeAndClaim()
+
+		// You can emit an event regarding the claim. This allows you to
+		// communicate with the user. Note that events should be used
+		// sparingly and are subject to throttling
+		response.Warning(rsp, errors.New("something went wrong")).
+			TargetCompositeAndClaim()
+
+		// If the function can't read the XR, the request is malformed. This
+		// should never happen. The function returns a fatal result. This tells
+		// Crossplane to stop running functions and return an error.
 		response.Fatal(rsp, errors.Wrapf(err, "cannot get observed composite resource from %T", req))
 		return rsp, nil
 	}
+
+	// Create an updated logger with useful information about the XR.
+	log := f.log.WithValues(
+		"xr-version", xr.Resource.GetAPIVersion(),
+		"xr-kind", xr.Resource.GetKind(),
+		"xr-name", xr.Resource.GetName(),
+	)
 
 	un, err := xr.Resource.GetString("spec.userName")
 	if err != nil {
@@ -51,50 +77,66 @@ func (f *Function) RunFunction(_ context.Context, req *fnv1.RunFunctionRequest) 
 		return rsp, nil
 	}
 
-	in := &v1beta1.ModelDeployment{}
-	if err := request.GetInput(req, in); err != nil {
-		// You can set a custom status condition on the claim. This allows you to
-		// communicate with the user. See the link below for status condition guidance.
-		// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
-		response.ConditionFalse(rsp, "FunctionSuccess", "InternalError").
-			WithMessage("Something went wrong.").
-			TargetCompositeAndClaim()
-
-		// You can emit an event regarding the claim. This allows you to communicate
-		// with the user. Note that events should be used sparingly and are subject
-		// to throttling; see the issue below for more information.
-		// https://github.com/crossplane/crossplane/issues/5802
-		response.Warning(rsp, errors.New("something went wrong")).TargetCompositeAndClaim()
-		response.Fatal(rsp, errors.Wrapf(err, "cannot get Function input from %T", req))
+	/// Get all desired composed resources from the request. The function will
+	// update this map of resources, then save it. This get, update, set pattern
+	// ensures the function keeps any resources added by other functions.
+	desired, err := request.GetDesiredComposedResources(req)
+	if err != nil {
+		response.Fatal(rsp, errors.Wrapf(err, "cannot get desired resources from %T", req))
 		return rsp, nil
 	}
 
-	f.log.Info("ModelDeployment XR claim successfully received", "UserName", in.Spec.UserName)
+	// Add v1beta1 types to the composed resource scheme.
+	// composed.From uses this to automatically set apiVersion and kind.
+	_ = v1.AddToScheme(composed.Scheme)
 
-	// Build Docker image
 	image, err := buildAndLoadDockerImage(un, rp)
 	if err != nil {
 		response.Fatal(rsp, errors.Wrapf(err, "failed to build and load docker image"))
 		return rsp, nil
 	}
 
-	// Patch the XR with the image field
-	patch := map[string]any{
-		"spec": map[string]any{
-			"image": image, // dynamically built image
+	b := &v1.ModelDeployment{
+		ObjectMeta: metav1.ObjectMeta{
+			// Set the external name annotation to the desired bucket name.
+			// This controls what the bucket will be named in AWS.
+			Annotations: map[string]string{
+				"crossplane.io/patchedAt": time.Now().Local().Format(time.RFC3339),
+			},
+		},
+		Spec: v1.ModelDeploymentSpec{
+			UserName:         un,
+			RequirementsPath: rp,
+			Image:            image,
 		},
 	}
 
-	_, err = json.Marshal(patch)
+	// Convert the XR to the unstructured resource data format the SDK uses to store desired composed resources.
+	cd, err := composed.From(b)
 	if err != nil {
-		response.Fatal(rsp, errors.Wrapf(err, "failed to marshal patch"))
+		response.Fatal(rsp, errors.Wrapf(err, "cannot convert %T to %T", b, &composed.Unstructured{}))
 		return rsp, nil
 	}
 
-	response.Normalf(rsp, "Function ran with inputs: %s and %s", un, rp)
-	// You can set a custom status condition on the claim. This allows you to
-	// communicate with the user. See the link below for status condition guidance.
-	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+	// Add the XR to the map of desired composed resources. It's
+	// important that the function adds the same XR every time it's
+	// called. It's also important that the XR is added with the same
+	// resource.Name every time it's called.
+	desired[resource.Name(image)] = &resource.DesiredComposed{Resource: cd}
+
+	// Finally, save the updated desired composed resources to the response.
+	if err := response.SetDesiredComposedResources(rsp, desired); err != nil {
+		response.Fatal(rsp, errors.Wrapf(err, "cannot set desired composed resources in %T", rsp))
+		return rsp, nil
+	}
+
+	// Log what the function did. This will only appear in the function's pod
+	// logs. A function can use response.Normal and response.Warning to emit
+	// Kubernetes events associated with the XR it's operating on.
+	log.Info("Patched image name", "image", image)
+
+	// You can set a custom status condition on the claim. This allows you
+	// to communicate with the user.
 	response.ConditionTrue(rsp, "FunctionSuccess", "Success").TargetCompositeAndClaim()
 
 	return rsp, nil
@@ -111,12 +153,12 @@ func buildAndLoadDockerImage(userName, requirementsPath string) (string, error) 
 	WORKDIR /app
 	COPY requirements.txt .
 	RUN pip install -r %s
-	COPY app.py .
-	CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5000"]
+	COPY main.py .
+	CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 	`, requirementsPath)
-	err := os.WriteFile("Dockerfile", []byte(dockerfileContent), 0644)
+	err := os.WriteFile("tempDockerfile", []byte(dockerfileContent), 0644)
 	if err != nil {
-		return image, fmt.Errorf("failed to write Dockerfile: %w", err)
+		return image, fmt.Errorf("failed to write temp Dockerfile: %w", err)
 	}
 
 	// Create app.py dynamically
@@ -132,13 +174,13 @@ func buildAndLoadDockerImage(userName, requirementsPath string) (string, error) 
 	def predict():
 	    return {"prediction": "fake prediction"}
 	`
-	err = os.WriteFile("app.py", []byte(appPyContent), 0644)
+	err = os.WriteFile("main.py", []byte(appPyContent), 0644)
 	if err != nil {
-		return "", fmt.Errorf("failed to write app.py: %w", err)
+		return "", fmt.Errorf("failed to write main.py: %w", err)
 	}
 
 	// Docker build
-	cmd := exec.Command("docker", "build", "-t", image, ".")
+	cmd := exec.Command("docker", "build", "-f", "tempDockerfile", "-t", image, ".")
 	var outBuf, errBuf bytes.Buffer
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &errBuf
