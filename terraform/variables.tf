@@ -10,12 +10,13 @@ variable "cluster_name" {
   default     = "k8s-platform"
 }
 
-variable "aws_account_id" {
-    description = "AWS account ID (deployment target)"
-    type = string
-}
-
 variable "aws_iam_user" {
     description = "Name of the IAM User (after 'aws configure' it can be obtained from aws sts get-caller-identity)"
+    type = string
+    default = "crossplane"
+}
+
+variable "aws_account_id" {
+    description = "AWS account ID (deployment target)"
     type = string
 }

@@ -1,5 +1,6 @@
 APP_NAME=k8s-platform
-IMAGE_NAME=claim-controller:latest
+IMAGE_NAME_1=claim-controller:latest
+IMAGE_NAME_1=function-docker-build:latest
 
 build:
 	cd claim-controller && go build -o claim-controller main.go
@@ -46,10 +47,12 @@ crossplane-provider-ci:
 	kubectl apply -f infra/provider-config.yaml
 
 docker:
-	docker build -t $(IMAGE_NAME) claim-controller/.
+	docker build -t $(IMAGE_NAME_1) claim-controller/.
+	docker build -t $(IMAGE_NAME_2) function-docker-build/.
 
 kind-load:
-	kind load docker-image $(IMAGE_NAME) --name $(APP_NAME)
+	kind load docker-image $(IMAGE_NAME_1) --name $(APP_NAME)
+	kind load docker-image $(IMAGE_NAME_2) --name $(APP_NAME)
 
 helm-install:
 	helm upgrade --install claim-controller ./claim-controller-chart --namespace=crossplane-system
@@ -58,10 +61,13 @@ apply:
 	kubectl apply -f infra/functions/patch-and-transform.yaml
 	kubectl apply -f infra/storage-xrd.yaml
 	kubectl apply -f infra/storage-composition.yaml
-	kubectl apply -f infra/storage-claim.yaml
+	kubectl apply -f claims/storage-claim.yaml
 	kubectl apply -f infra/compute-xrd.yaml
 	kubectl apply -f infra/compute-composition.yaml
-	kubectl apply -f infra/compute-claim.yaml
+	kubectl apply -f claims/compute-claim.yaml
+	kubectl apply -f infra/modeldeployment-xrd.yaml
+    kubectl apply -f infra/modeldeployment-composition.yaml
+	kubectl apply -f claims/modeldeployment-claim.yaml
 
 argocd-install:
 	kubectl create namespace argocd

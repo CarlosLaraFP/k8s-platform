@@ -1,0 +1,31 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: modeldeployments.platform.example.org
+spec:
+  group: platform.example.org
+  names:
+    kind: ModelDeployment
+    plural: modeldeployments
+  claimNames:
+    kind: ModelDeploymentClaim
+    plural: modeldeploymentclaims
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                userName:
+                  type: string
+                requirementsPath:
+                  type: string
+              required:
+              - userName
+              - requirementsPath

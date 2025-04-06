@@ -1,0 +1,83 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: modeldeployment-composition
+  labels:
+    crossplane.io/xrd: modeldeployments.platform.example.org
+spec:
+  compositeTypeRef:
+    apiVersion: platform.example.org/v1alpha1
+    kind: ModelDeployment
+  mode: Pipeline
+  pipeline:
+    - step: build-docker-image
+      functionRef:
+        name: docker-build-function  # custom Composition Function mutates the XR to include the newly built Docker image name
+      input:
+        apiVersion: platform.example.org/v1alpha1
+        kind: ModelDeployment
+    - step: deploy-k8s-resources
+      functionRef:
+        name: function-patch-and-transform  # community function to apply patches
+      input:
+        patchSets:
+          - name: inject-image
+            patches:
+              - fromFieldPath: "spec.image"
+                toFieldPath: "spec.template.spec.containers[0].image"
+        resources:
+          - base:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                labels:
+                  app: model-server
+              spec:
+                replicas: 2
+                selector:
+                  matchLabels:
+                    app: model-server
+                template:
+                  metadata:
+                    labels:
+                      app: model-server
+                  spec:
+                    containers:
+                      - name: model-server
+                        image: "placeholder:latest"  # Will be overwritten by patch
+                        ports:
+                          - containerPort: 5000
+            patchesFrom:
+              - patchSetName: inject-image
+            name: deployment
+          - base:
+              apiVersion: v1
+              kind: Service
+              metadata:
+                labels:
+                  app: model-server
+              spec:
+                selector:
+                  app: model-server
+                ports:
+                  - port: 80
+                    targetPort: 5000
+            name: service
+          - base:
+              apiVersion: networking.k8s.io/v1
+              kind: Ingress
+              metadata:
+                labels:
+                  app: model-server
+              spec:
+                rules:
+                  - http:
+                      paths:
+                        - path: /predict
+                          pathType: Prefix
+                          backend:
+                            service:
+                              name: service
+                              port:
+                                number: 80
+            name: ingress
