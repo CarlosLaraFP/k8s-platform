@@ -1,4 +1,4 @@
-module k8s-platform
+module claim-controller
 
 go 1.24.1
 
