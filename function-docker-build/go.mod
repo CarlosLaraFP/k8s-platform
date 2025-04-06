@@ -1,8 +1,6 @@
-module github.com/crossplane/function-docker-build
+module function-docker-build
 
-go 1.23
-
-toolchain go1.23.2
+go 1.24
 
 require (
 	github.com/alecthomas/kong v0.9.0

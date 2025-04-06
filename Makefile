@@ -1,6 +1,6 @@
 APP_NAME=k8s-platform
 IMAGE_NAME_1=claim-controller:latest
-IMAGE_NAME_1=function-docker-build:latest
+IMAGE_NAME_2=function-docker-build:latest
 
 build:
 	cd claim-controller && go build -o claim-controller main.go

@@ -11,20 +11,21 @@ import (
 // This isn't a custom resource, in the sense that we never install its CRD.
 // It is a KRM-like object, so we generate a CRD to describe its schema.
 
-// TODO: Add your input type here! It doesn't need to be called 'Input', you can
-// rename it to anything you like.
-
-// Input can be used to provide input to this Function.
+// ModelDeployment XR is the input to this Function.
 // +kubebuilder:object:root=true
 // +kubebuilder:storageversion
 // +kubebuilder:resource:categories=crossplane
-type Input struct {
+type ModelDeployment struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Example is an example field. Replace it with whatever input you need. :)
-	Example string `json:"example"`
-
-	RequirementsPath string `json:"requirementsPath"`
-	Name             string `json:"name"`
+	Spec ModelDeploymentSpec `json:"spec"`
 }
+
+type ModelDeploymentSpec struct {
+	UserName         string `json:"userName"`
+	RequirementsPath string `json:"requirementsPath"`
+}
+
+// When you edit files under the input directory you must update some generated files by running go generate. See input/generate.go for details.
+// go generate ./...
