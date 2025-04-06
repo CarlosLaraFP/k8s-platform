@@ -132,7 +132,7 @@ provider "docker" {
 resource "docker_image" "controller" {
   name = "${aws_ecr_repository.claim-controller.repository_url}:latest"
   build {
-    context = "${path.module}/.."
+    context = "${path.module}/../claim-controller"
   }
 }
 
@@ -208,14 +208,14 @@ resource "helm_release" "claim-controller" {
   ]
 
   name       = "claim-controller"
-  chart      = "${path.module}/../chart"
+  chart      = "${path.module}/../claim-controller-chart"
   namespace  = "crossplane-system"
   create_namespace = true
   atomic = true
   cleanup_on_fail = true
 
   values = [
-    file("${path.module}/../chart/values.yaml")
+    file("${path.module}/../claim-controller-chart/values.yaml")
   ]
 
   set {
