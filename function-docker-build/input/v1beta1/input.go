@@ -17,7 +17,7 @@ import (
 // +kubebuilder:resource:categories=crossplane
 type ModelDeployment struct {
 	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata"`
 
 	Spec ModelDeploymentSpec `json:"spec"`
 }
@@ -25,6 +25,7 @@ type ModelDeployment struct {
 type ModelDeploymentSpec struct {
 	UserName         string `json:"userName"`
 	RequirementsPath string `json:"requirementsPath"`
+	Image            string `json:"image,omitempty"`
 }
 
 // When you edit files under the input directory you must update some generated files by running go generate. See input/generate.go for details.

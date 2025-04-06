@@ -40,6 +40,8 @@ spec:
             type: object
           spec:
             properties:
+              image:
+                type: string
               requirementsPath:
                 type: string
               userName:
@@ -49,6 +51,7 @@ spec:
             - userName
             type: object
         required:
+        - metadata
         - spec
         type: object
     served: true

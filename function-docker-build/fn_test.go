@@ -55,13 +55,6 @@ func TestRunFunction(t *testing.T) {
 			},
 			want: want{
 				rsp: &fnv1.RunFunctionResponse{
-					Results: []*fnv1.Result{
-						{
-							Severity: fnv1.Severity_SEVERITY_NORMAL,
-							Message:  "Function ran with inputs: charles123 and requirements.txt",
-							Target:   fnv1.Target_TARGET_COMPOSITE.Enum(),
-						},
-					},
 					Conditions: []*fnv1.Condition{
 						{
 							Type:   "FunctionSuccess",
@@ -83,13 +76,49 @@ func TestRunFunction(t *testing.T) {
 			f := &Function{log: logging.NewNopLogger()}
 			rsp, err := f.RunFunction(tc.args.ctx, tc.args.req)
 
-			if diff := cmp.Diff(tc.want.rsp, rsp, protocmp.Transform()); diff != "" {
-				t.Errorf("%s\nf.RunFunction(...): -want rsp, +got rsp:\n%s", tc.reason, diff)
-			}
-
 			if diff := cmp.Diff(tc.want.err, err, cmpopts.EquateErrors()); diff != "" {
 				t.Errorf("%s\nf.RunFunction(...): -want err, +got err:\n%s", tc.reason, diff)
 			}
+
+			// Check conditions
+			if diff := cmp.Diff(tc.want.rsp.Conditions, rsp.Conditions, protocmp.Transform()); diff != "" {
+				t.Errorf("%s\nf.RunFunction(...): -want conditions, +got conditions:\n%s", tc.reason, diff)
+			}
+
+			// Check that desired resources exist
+			if len(rsp.Desired.Resources) != 1 {
+				t.Errorf("%s\nexpected 1 desired resource, got %d", tc.reason, len(rsp.Desired.Resources))
+			}
+
+			for _, desired := range rsp.Desired.Resources {
+				fields := desired.Resource.Fields
+
+				// Top-level fields
+				if fields["apiVersion"].GetStringValue() != "platform.example.org/v1alpha1" {
+					t.Errorf("expected apiVersion platform.example.org/v1alpha1, got %s", fields["apiVersion"].GetStringValue())
+				}
+
+				if fields["kind"].GetStringValue() != "ModelDeployment" {
+					t.Errorf("expected kind ModelDeployment, got %s", fields["kind"].GetStringValue())
+				}
+
+				// Access nested fields
+				specFields := fields["spec"].GetStructValue().Fields
+
+				if specFields["userName"].GetStringValue() != "charles123" {
+					t.Errorf("expected userName charles123, got %s", specFields["userName"].GetStringValue())
+				}
+
+				if specFields["requirementsPath"].GetStringValue() != "requirements.txt" {
+					t.Errorf("expected requirementsPath requirements.txt, got %s", specFields["requirementsPath"].GetStringValue())
+				}
+
+				if specFields["image"].GetStringValue() == "" {
+					t.Errorf("expected spec.image to be set, but it was empty")
+				}
+			}
+
 		})
 	}
+
 }
