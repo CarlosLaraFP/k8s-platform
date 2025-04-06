@@ -2,14 +2,14 @@ APP_NAME=k8s-platform
 IMAGE_NAME=claim-controller:latest
 
 build:
-	go build -o claim-controller main.go
+	cd claim-controller && go build -o claim-controller main.go
 
 run:
-	go run main.go
+	cd claim-controller && go run .
 
 test:
-	go mod tidy
-	go test ./... -v
+	cd claim-controller && go mod tidy
+	cd claim-controller && go test ./... -v
 
 terraform-apply:
 	cd terraform && terraform init
@@ -46,13 +46,13 @@ crossplane-provider-ci:
 	kubectl apply -f infra/provider-config.yaml
 
 docker:
-	docker build -t $(IMAGE_NAME) .
+	docker build -t $(IMAGE_NAME) claim-controller/.
 
 kind-load:
 	kind load docker-image $(IMAGE_NAME) --name $(APP_NAME)
 
 helm-install:
-	helm upgrade --install claim-controller ./chart --namespace=crossplane-system
+	helm upgrade --install claim-controller ./claim-controller-chart --namespace=crossplane-system
 
 apply:
 	kubectl apply -f infra/functions/patch-and-transform.yaml
