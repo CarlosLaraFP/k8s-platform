@@ -33,6 +33,6 @@ func (c *CLI) Run() error {
 }
 
 func main() {
-	ctx := kong.Parse(&CLI{}, kong.Description("A Crossplane Composition Function."))
+	ctx := kong.Parse(&CLI{}, kong.Description("Crossplane Composition Function to automatically build and load Docker images."))
 	ctx.FatalIfErrorf(ctx.Run())
 }

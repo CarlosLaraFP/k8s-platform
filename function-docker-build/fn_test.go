@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -12,7 +13,6 @@ import (
 	"github.com/crossplane/function-sdk-go/logging"
 	fnv1 "github.com/crossplane/function-sdk-go/proto/v1"
 	"github.com/crossplane/function-sdk-go/resource"
-	"github.com/crossplane/function-sdk-go/response"
 )
 
 func TestRunFunction(t *testing.T) {
@@ -32,24 +32,33 @@ func TestRunFunction(t *testing.T) {
 		want   want
 	}{
 		"ResponseIsReturned": {
-			reason: "The Function should return a fatal result if no input was specified",
+			reason: "The Function should run successfully",
 			args: args{
 				req: &fnv1.RunFunctionRequest{
-					Meta: &fnv1.RequestMeta{Tag: "hello"},
-					Input: resource.MustStructJSON(`{
-						"apiVersion": "template.fn.crossplane.io/v1beta1",
-						"kind": "Input",
-						"example": "Hello, world"
-					}`),
+					Observed: &fnv1.State{
+						Composite: &fnv1.Resource{
+							Resource: resource.MustStructJSON(`{
+							"apiVersion": "platform.example.org/v1alpha1",
+							"kind": "ModelDeployment",
+							"metadata": {
+								"name": "my-model-deployment",
+								"namespace": "charles123"
+							},
+							"spec": {
+								"userName": "charles123",
+								"requirementsPath": "requirements.txt"
+							}
+						}`),
+						},
+					},
 				},
 			},
 			want: want{
 				rsp: &fnv1.RunFunctionResponse{
-					Meta: &fnv1.ResponseMeta{Tag: "hello", Ttl: durationpb.New(response.DefaultTTL)},
 					Results: []*fnv1.Result{
 						{
 							Severity: fnv1.Severity_SEVERITY_NORMAL,
-							Message:  "I was run with input \"Hello, world\"!",
+							Message:  "Function ran with inputs: charles123 and requirements.txt",
 							Target:   fnv1.Target_TARGET_COMPOSITE.Enum(),
 						},
 					},
@@ -60,6 +69,9 @@ func TestRunFunction(t *testing.T) {
 							Reason: "Success",
 							Target: fnv1.Target_TARGET_COMPOSITE_AND_CLAIM.Enum(),
 						},
+					},
+					Meta: &fnv1.ResponseMeta{
+						Ttl: durationpb.New(60 * time.Second),
 					},
 				},
 			},

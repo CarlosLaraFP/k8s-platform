@@ -12,7 +12,7 @@ spec:
   pipeline:
     - step: build-docker-image
       functionRef:
-        name: docker-build-function  # custom Composition Function mutates the XR to include the newly built Docker image name
+        name: function-docker-build  # custom Composition Function mutates the XR to include the newly built Docker image name
       input:
         apiVersion: platform.example.org/v1alpha1
         kind: ModelDeployment
@@ -21,10 +21,10 @@ spec:
         name: function-patch-and-transform  # community function to apply patches
       input:
         patchSets:
-          - name: inject-image
-            patches:
-              - fromFieldPath: "spec.image"
-                toFieldPath: "spec.template.spec.containers[0].image"
+        - name: inject-image
+          patches:
+            - fromFieldPath: "spec.image"
+              toFieldPath: "spec.template.spec.containers[0].image"
         resources:
           - base:
               apiVersion: apps/v1

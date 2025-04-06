@@ -26,6 +26,8 @@ spec:
                   type: string
                 requirementsPath:
                   type: string
+                image:
+                  type: string
               required:
               - userName
               - requirementsPath
