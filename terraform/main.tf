@@ -188,6 +188,8 @@ resource "null_resource" "kubectl_apply" {
       kubectl apply -f ${path.module}/../infra/storage-composition.yaml
       kubectl apply -f ${path.module}/../infra/compute-xrd.yaml
       kubectl apply -f ${path.module}/../infra/compute-composition.yaml
+      kubectl apply -f ${path.module}/../infra/modeldeployment-xrd.yaml
+      kubectl apply -f ${path.module}/../infra/modeldeployment-composition.yaml
 
       kubectl create namespace argocd
       kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml

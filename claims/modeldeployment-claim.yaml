@@ -1,0 +1,7 @@
+apiVersion: platform.example.org/v1alpha1
+kind: ModelDeploymentClaim
+metadata:
+  name: notebook-model
+spec:
+  userName: "placeholder"
+  requirementsPath: "requirements.txt"
