@@ -3,5 +3,5 @@ kind: ModelDeploymentClaim
 metadata:
   name: notebook-model
 spec:
-  userName: "placeholder"
+  userName: "charles123"
   requirementsPath: "requirements.txt"

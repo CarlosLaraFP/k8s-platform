@@ -12,14 +12,16 @@ spec:
   pipeline:
     - step: build-docker-image
       functionRef:
-        name: function-docker-build  # custom Composition Function mutates the XR to include the newly built Docker image name
+        name: function-docker-build
       input:
         apiVersion: platform.example.org/v1alpha1
         kind: ModelDeployment
     - step: deploy-k8s-resources
       functionRef:
-        name: function-patch-and-transform  # community function to apply patches
+        name: function-patch-and-transform
       input:
+        apiVersion: fn.crossplane.io/v1beta1
+        kind: PatchAndTransformFunctionInput
         patchSets:
         - name: inject-image
           patches:
