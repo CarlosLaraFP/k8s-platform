@@ -2,9 +2,10 @@
 
 [![CI](https://github.com/CarlosLaraFP/k8s-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/CarlosLaraFP/k8s-platform/actions)
 
-Developer self-service platform built with Crossplane on Karpenter-based AWS EKS Auto. Core infrastructure managed with Terraform & ArgoCD and user-created cloud resources managed via Crossplane Claims. This includes a Helm-packaged custom Kubernetes controller to automate the lifecycle of ephemeral AWS resources based on TTL logic defined at the Claim level.
+Developer self-service platform built with Crossplane on Karpenter-based AWS EKS Auto. Core infrastructure managed with Terraform & ArgoCD and user-created cloud resources managed via Crossplane Claims. This includes a Helm-packaged custom Kubernetes controller to automate the lifecycle of ephemeral AWS resources based on TTL logic defined at the Claim level. Custom Composition Function automatically builds, tags, and pushes Docker images for ModelDeployment Claims.
 
 ![Screenshot](solution-architecture.png)
+![Screenshot](user-claims.png)
 ---
 
 ## 🚀 Features
