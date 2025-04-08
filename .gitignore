@@ -2,3 +2,5 @@ aws-credentials.txt
 terraform/.terraform
 terraform/.terraform.lock.hcl
 terraform/terraform.tfstate*
+function-docker-build/tempDockerfile
+function-docker-build/main.py

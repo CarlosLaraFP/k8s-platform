@@ -1,0 +1,12 @@
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-docker-build
+  namespace: crossplane-system
+  annotations:
+    render.crossplane.io/runtime: Development
+spec:
+  # The CLI ignores this package when using the Development runtime.
+  # You can set it to any value.
+  package: xpkg.upbound.io/carloslarafp/function-docker-build
+  packagePullPolicy: Always

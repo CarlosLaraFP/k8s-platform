@@ -1,6 +1,7 @@
 APP_NAME=k8s-platform
-IMAGE_NAME_1=claim-controller:latest
-IMAGE_NAME_2=function-docker-build:latest
+IMAGE_NAME=claim-controller:latest
+FUNCTION_NAME = function-docker-build
+LOCAL_REGISTRY = localhost:5001
 
 build:
 	cd claim-controller && go build -o claim-controller main.go
@@ -28,7 +29,9 @@ kind-create:
 crossplane-install:
 	helm repo add crossplane-stable https://charts.crossplane.io/stable
 	helm repo update
-	helm install crossplane crossplane-stable/crossplane -n crossplane-system --create-namespace
+	helm install crossplane crossplane-stable/crossplane -n crossplane-system --create-namespace \
+	  --set image.repository=crossplane/crossplane \
+	  --set image.tag=v1.19.1
 	kubectl wait --for=condition=Available deployment/crossplane -n crossplane-system --timeout=120s
 	kubectl get pods -n crossplane-system
 	kubectl api-resources | grep crossplane
@@ -47,18 +50,19 @@ crossplane-provider-ci:
 	kubectl apply -f infra/provider-config.yaml
 
 docker:
-	docker build -t $(IMAGE_NAME_1) claim-controller/.
-	docker build -t $(IMAGE_NAME_2) function-docker-build/.
+	docker build -t $(IMAGE_NAME) claim-controller/.
+	docker build -t function-docker-build:xpkg function-docker-build/.
 
 kind-load:
-	kind load docker-image $(IMAGE_NAME_1) --name $(APP_NAME)
-	kind load docker-image $(IMAGE_NAME_2) --name $(APP_NAME)
+	kind load docker-image $(IMAGE_NAME) --name $(APP_NAME)
+	kind load docker-image function-docker-build:xpkg --name k8s-platform
 
 helm-install:
 	helm upgrade --install claim-controller ./claim-controller-chart --namespace=crossplane-system
 
 apply:
 	kubectl apply -f infra/functions/patch-and-transform.yaml
+	kubectl apply -f infra/functions/docker-build.yaml
 	kubectl apply -f infra/storage-xrd.yaml
 	kubectl apply -f infra/storage-composition.yaml
 	kubectl apply -f claims/storage-claim.yaml
@@ -66,7 +70,7 @@ apply:
 	kubectl apply -f infra/compute-composition.yaml
 	kubectl apply -f claims/compute-claim.yaml
 	kubectl apply -f infra/modeldeployment-xrd.yaml
-    kubectl apply -f infra/modeldeployment-composition.yaml
+	kubectl apply -f infra/modeldeployment-composition.yaml
 	kubectl apply -f claims/modeldeployment-claim.yaml
 
 argocd-install:
@@ -81,6 +85,13 @@ argocd-install:
 metrics-local:
 	kubectl port-forward -n crossplane-system deployment/claim-controller 8080:8080
 	curl -s http://localhost:8080/metrics | grep claims
+
+crossplane-package:
+	docker build -t $(FUNCTION_NAME):xpkg $(FUNCTION_NAME)/.
+	docker tag $(FUNCTION_NAME):xpkg $(LOCAL_REGISTRY)/$(FUNCTION_NAME):xpkg
+	docker push $(LOCAL_REGISTRY)/$(FUNCTION_NAME):xpkg
+	kind load docker-image $(LOCAL_REGISTRY)/$(FUNCTION_NAME):xpkg --name $(APP_NAME)
+	kubectl apply -f infra/functions/docker-build.yaml
 
 helm-uninstall:
 	helm uninstall claim-controller --namespace=crossplane-system
