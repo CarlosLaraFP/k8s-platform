@@ -6,6 +6,10 @@ spec:
   compositeTypeRef:
     apiVersion: platform.example.org/v1alpha1
     kind: AWSCompute
+  readinessChecks:  
+  - type: "MatchString"  
+    fieldPath: "status.atProvider.state"  
+    matchString: "available"  
   mode: Pipeline
   pipeline:
   - step: patch-and-transform
