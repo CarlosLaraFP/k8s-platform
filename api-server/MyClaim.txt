@@ -1,0 +1,2 @@
+default: metadata
+env: sandbox
