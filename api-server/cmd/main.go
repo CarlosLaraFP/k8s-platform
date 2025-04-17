@@ -1,10 +1,14 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
+	h "api-server/internal/handler"
 )
 
 func main() {
@@ -14,10 +18,15 @@ func main() {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	// root
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Platform API Server"))
-	})
 
-	http.ListenAndServe(":8080", r)
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "web/templates/index.html")
+	})
+	// This tells chi to match paths like /view/MyClaim, and now your MakeHandler will receive the correct r.URL.Path value and extract MyClaim.
+	r.Get("/view/{name}", h.MakeHandler(h.ViewHandler))
+	r.Get("/edit/{name}", h.MakeHandler(h.EditHandler))
+	r.Post("/submit/{name}", h.MakeHandler(h.SubmitHandler))
+
+	fmt.Println("Starting server...")
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
