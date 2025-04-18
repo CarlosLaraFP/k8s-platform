@@ -3,6 +3,9 @@
 <h2>Submit a request for storage below</h2>
 
 <form action="/submit/MyStorage" method="POST">
+    <label for="username">Username:</label>
+    <input type="text" name="username" id="username" placeholder="dev" /><br/><br/>
+
     <label for="region">Region:</label>
     <select name="region" id="region">
         <option value="US">US</option>
@@ -11,4 +14,3 @@
 
     <input type="submit" value="Request Storage">
 </form>
-

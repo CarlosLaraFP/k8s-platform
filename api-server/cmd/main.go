@@ -30,6 +30,7 @@ func main() {
 	r.Get("/view/{name}", h.MakeHandler(h.ViewHandler))
 	r.Get("/edit/{name}", h.MakeHandler(h.EditHandler))
 	r.Post("/submit/{name}", h.MakeHandler(h.SubmitHandler))
+	r.Get("/claims", h.GetClaims)
 
 	h.NewKubernetesClient()
 

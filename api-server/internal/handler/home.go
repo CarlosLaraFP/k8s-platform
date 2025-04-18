@@ -27,6 +27,11 @@ var (
 	scheme    = runtime.NewScheme()
 	clientset *kubernetes.Clientset
 	client    *dynamic.DynamicClient
+	gvr       = schema.GroupVersionResource{
+		Group:    "platform.example.org",
+		Version:  "v1alpha1",
+		Resource: "storage",
+	}
 )
 
 func init() {
@@ -54,12 +59,18 @@ func NewKubernetesClient() {
 	client = c
 }
 
-var templates = template.Must(template.ParseFiles("web/templates/view.html", "web/templates/edit.html", "web/templates/index.html"))
+var templates = template.Must(template.ParseFiles(
+	"web/templates/view.html",
+	"web/templates/edit.html",
+	"web/templates/index.html",
+	"web/templates/list.html",
+))
 var validPath = regexp.MustCompile("^/(submit|edit|view)/([a-zA-Z0-9]+)$")
 
 type Claim struct {
-	Name   string
-	Region string
+	Name      string
+	Region    string
+	Namespace string
 }
 
 // apply uses client-go to create a Crossplane Claim
@@ -69,15 +80,10 @@ func (c *Claim) apply(ctx context.Context) error {
 	claim.SetAPIVersion("platform.example.org/v1alpha1")
 	claim.SetKind("Storage")
 	claim.SetName(c.Name)
-	claim.SetNamespace("dev-user")
+	claim.SetNamespace(c.Namespace)
 	err := unstructured.SetNestedField(claim.Object, c.Region, "spec", "location")
 	if err != nil {
 		return fmt.Errorf("error setting spec.location: %w", err)
-	}
-	gvr := schema.GroupVersionResource{
-		Group:    "platform.example.org",
-		Version:  "v1alpha1",
-		Resource: "storage",
 	}
 
 	discoveryClient, err := clientset.Discovery().ServerResourcesForGroupVersion("platform.example.org/v1alpha1")
@@ -89,16 +95,10 @@ func (c *Claim) apply(ctx context.Context) error {
 	}
 
 	// sets the target API endpoint for the request: POST /apis/platform.example.org/v1alpha1/namespaces/dev-user/storage
-	_, err = client.Resource(gvr).Namespace("dev-user").Create(ctx, claim, metav1.CreateOptions{})
-	if err != nil {
+	if _, err := client.Resource(gvr).Namespace(c.Namespace).Create(ctx, claim, metav1.CreateOptions{}); err != nil {
 		return fmt.Errorf("error creating the claim: %w", err)
 	}
 	return nil
-}
-
-func (c *Claim) save() error {
-	filename := c.Name + ".txt"
-	return os.WriteFile(filename, []byte(c.Region), 0600)
 }
 
 func loadClaim(name string) (*Claim, error) {
@@ -140,27 +140,73 @@ func ViewHandler(w http.ResponseWriter, r *http.Request, claim string) {
 func EditHandler(w http.ResponseWriter, r *http.Request, name string) {
 	p, err := loadClaim(name)
 	if err != nil {
-		p = &Claim{Name: name}
+		p = &Claim{Name: name, Region: "US"}
 	}
 	renderTemplate(w, "edit", p)
 }
 
 func SubmitHandler(w http.ResponseWriter, r *http.Request, name string) {
-	ctx := r.Context()
-	select {
-	case <-ctx.Done():
-		return
-	default:
+	c := &Claim{
+		Name:      strings.ToLower(name),
+		Region:    r.FormValue("region"),
+		Namespace: r.FormValue("username"),
 	}
 
-	c := &Claim{
-		Name:   strings.ToLower(name),
-		Region: r.FormValue("region"),
-	}
-	err := c.apply(ctx)
-	if err != nil {
+	if err := c.apply(r.Context()); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	http.Redirect(w, r, "/view/"+name, http.StatusFound)
+}
+
+type ClaimView struct {
+	Name      string
+	Location  string
+	Namespace string
+	Status    string
+}
+
+func GetClaims(w http.ResponseWriter, r *http.Request) {
+	ns := r.URL.Query().Get("ns")
+	if ns == "" {
+		ns = "dev-user"
+	}
+	list, err := client.
+		Resource(gvr).
+		Namespace(ns).
+		List(r.Context(), metav1.ListOptions{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	cv := make([]ClaimView, 0)
+
+	for _, r := range list.Items {
+		name := r.GetName()
+		location, _, _ := unstructured.NestedString(r.Object, "spec", "location")
+		conditions, _, _ := unstructured.NestedSlice(r.Object, "status", "conditions")
+		status := "Unknown"
+
+		for _, cond := range conditions {
+			if condMap, ok := cond.(map[string]any); ok {
+				if condMap["type"] == "Ready" {
+					if _, ok := condMap["status"].(string); ok {
+						status = "Ready"
+						break
+					}
+				}
+			}
+		}
+
+		cv = append(cv, ClaimView{
+			Name:      name,
+			Location:  location,
+			Namespace: ns,
+			Status:    status,
+		})
+	}
+	if err := templates.ExecuteTemplate(w, "list.html", cv); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
