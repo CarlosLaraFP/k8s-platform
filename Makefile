@@ -65,13 +65,11 @@ apply:
 	kubectl apply -f infra/functions/docker-build.yaml
 	kubectl apply -f infra/storage-xrd.yaml
 	kubectl apply -f infra/storage-composition.yaml
-	kubectl apply -f claims/storage-claim.yaml
+#	kubectl apply -f claims/storage-claim.yaml
 	kubectl apply -f infra/compute-xrd.yaml
 	kubectl apply -f infra/compute-composition.yaml
-	kubectl apply -f claims/compute-claim.yaml
 	kubectl apply -f infra/modeldeployment-xrd.yaml
 	kubectl apply -f infra/modeldeployment-composition.yaml
-	kubectl apply -f claims/modeldeployment-claim.yaml
 
 argocd-install:
 	kubectl create namespace argocd

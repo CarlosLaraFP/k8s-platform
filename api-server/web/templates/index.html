@@ -1,8 +1,14 @@
 <h1>Crossplane Self-Service</h1>
 
-<form action="/submit/MyClaim" method="POST">
-    <textarea name="body" rows="10" cols="60">default: metadata</textarea><br/>
-    <input type="submit" value="Create MyClaim">
+<h2>Submit a request for storage below</h2>
+
+<form action="/submit/MyStorage" method="POST">
+    <label for="region">Region:</label>
+    <select name="region" id="region">
+        <option value="US">US</option>
+        <option value="EU">EU</option>
+    </select><br/><br/>
+
+    <input type="submit" value="Request Storage">
 </form>
 
-<a href="/view/MyClaim">View MyClaim</a>
