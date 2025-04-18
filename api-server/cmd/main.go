@@ -31,6 +31,8 @@ func main() {
 	r.Get("/edit/{name}", h.MakeHandler(h.EditHandler))
 	r.Post("/submit/{name}", h.MakeHandler(h.SubmitHandler))
 
+	h.NewKubernetesClient()
+
 	fmt.Println("Starting server...")
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
