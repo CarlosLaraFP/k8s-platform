@@ -5,3 +5,4 @@ terraform/terraform.tfstate*
 function-docker-build/tempDockerfile
 function-docker-build/main.py
 function-docker-build/function-docker-build.xpkg
+api-server/*.txt

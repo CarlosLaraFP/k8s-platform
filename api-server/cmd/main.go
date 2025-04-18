@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -16,13 +17,16 @@ func main() {
 	// Routing refers to how an application's endpoints (URIs) respond to client requests.
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	// context deadline
+	r.Use(middleware.Timeout(60 * time.Second))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "web/templates/index.html")
 	})
-	// This tells chi to match paths like /view/MyClaim, and now your MakeHandler will receive the correct r.URL.Path value and extract MyClaim.
+	// This tells chi to match paths like /view/MyClaim, and now MakeHandler will receive the correct r.URL.Path value and extract MyClaim.
 	r.Get("/view/{name}", h.MakeHandler(h.ViewHandler))
 	r.Get("/edit/{name}", h.MakeHandler(h.EditHandler))
 	r.Post("/submit/{name}", h.MakeHandler(h.SubmitHandler))
