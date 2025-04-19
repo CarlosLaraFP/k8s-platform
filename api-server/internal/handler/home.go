@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -67,6 +68,7 @@ var templates = template.Must(template.ParseFiles(
 	"web/templates/list.html",
 ))
 var validPath = regexp.MustCompile("^/(submit|edit|view)/([a-zA-Z0-9]+)$")
+var validDNSName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
 
 type Claim struct {
 	Name      string
@@ -146,12 +148,26 @@ func EditHandler(w http.ResponseWriter, r *http.Request, name string) {
 	renderTemplate(w, "edit", p)
 }
 
-func SubmitHandler(w http.ResponseWriter, r *http.Request, name string) {
+func SubmitHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	// Validating the name to match Kubernetes DNS subdomain rules
+	name := strings.ToLower(r.FormValue("name"))
+	if !validDNSName.MatchString(name) || len(name) > 63 {
+		http.Error(w, "Invalid claim name: must match [a-z0-9]([-a-z0-9]*[a-z0-9])? and < 64 characters", http.StatusBadRequest)
+		return
+	}
+
 	c := &Claim{
-		Name:      strings.ToLower(name),
+		Name:      name,
 		Region:    r.FormValue("region"),
 		Namespace: r.FormValue("username"),
 	}
+
+	defer func() {
+		metrics.ClaimLatency.
+			WithLabelValues(c.Region, c.Namespace).
+			Observe(time.Since(start).Seconds())
+	}()
 
 	if err := c.apply(r.Context()); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

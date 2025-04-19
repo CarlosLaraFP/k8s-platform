@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
@@ -12,6 +14,8 @@ import (
 var (
 	ClaimsSubmitted *prometheus.CounterVec
 	ClaimsFailed    *prometheus.CounterVec
+	ClaimLatency    *prometheus.HistogramVec
+	Uptime          prometheus.Gauge
 )
 
 func StartPrometheus(r *chi.Mux) {
@@ -37,5 +41,28 @@ func StartPrometheus(r *chi.Mux) {
 		[]string{"region", "username"},
 	)
 
-	r.Handle("/metrics", promhttp.Handler()) // expose Prometheus metrics
+	ClaimLatency = promauto.With(reg).NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "claim_submission_seconds",
+			Help:    "Latency for submitting a claim",
+			Buckets: prometheus.DefBuckets, // reasonable defaults
+		},
+		[]string{"region", "username"},
+	)
+
+	Uptime = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+		Name: "control_plane_uptime_seconds",
+		Help: "How long the control plane has been up",
+	})
+
+	go func() {
+		start := time.Now()
+		for {
+			Uptime.Set(time.Since(start).Seconds())
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
+	// Serve Prometheus metrics from our custom registry
+	r.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 }
