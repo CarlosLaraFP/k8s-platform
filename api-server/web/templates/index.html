@@ -2,9 +2,12 @@
 
 <h2>Submit a request for storage below</h2>
 
-<form action="/submit/MyStorage" method="POST">
+<form method="POST" action="/submit">
+    <label for="name">Storage Name:</label>
+    <input type="text" name="name" id="name" placeholder="mystorage" pattern="[a-z0-9]([-a-z0-9]*[a-z0-9])?" required/><br/><br/>
+
     <label for="username">Username:</label>
-    <input type="text" name="username" id="username" placeholder="dev" /><br/><br/>
+    <input type="text" name="username" id="username" placeholder="dev" required/><br/><br/>
 
     <label for="region">Region:</label>
     <select name="region" id="region">

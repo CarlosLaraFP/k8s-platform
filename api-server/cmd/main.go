@@ -30,7 +30,7 @@ func main() {
 	// This tells chi to match paths like /view/MyClaim, and now MakeHandler will receive the correct r.URL.Path value and extract MyClaim.
 	r.Get("/view/{name}", h.MakeHandler(h.ViewHandler))
 	r.Get("/edit/{name}", h.MakeHandler(h.EditHandler))
-	r.Post("/submit/{name}", h.MakeHandler(h.SubmitHandler))
+	r.Post("/submit", h.SubmitHandler)
 	r.Get("/claims", h.GetClaims)
 
 	h.NewKubernetesClient()
