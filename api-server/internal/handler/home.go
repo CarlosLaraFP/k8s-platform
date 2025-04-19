@@ -122,6 +122,13 @@ func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/claims?ns=%s", ns), http.StatusFound)
 }
 
+type ClaimView struct {
+	Name      string
+	Location  string
+	Namespace string
+	Status    string
+}
+
 type Claim struct {
 	Name      string
 	GVR       schema.GroupVersionResource
@@ -210,24 +217,20 @@ func (h *Handler) GetClaims(w http.ResponseWriter, r *http.Request) {
 			Status:    status,
 		})
 	}
-	if err := templates.ExecuteTemplate(w, "list.html", cv); err != nil {
+	if err := loadTemplates().ExecuteTemplate(w, "list.html", cv); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-type ClaimView struct {
-	Name      string
-	Location  string
-	Namespace string
-	Status    string
+func loadTemplates() *template.Template {
+	return template.Must(template.ParseFiles(
+		"web/templates/view.html",
+		"web/templates/edit.html",
+		"web/templates/index.html",
+		"web/templates/list.html",
+	))
 }
 
-var templates = template.Must(template.ParseFiles(
-	"web/templates/view.html",
-	"web/templates/edit.html",
-	"web/templates/index.html",
-	"web/templates/list.html",
-))
 var validPath = regexp.MustCompile("^/(submit|edit|view)/([a-zA-Z0-9]+)$")
 var validDNSName = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
 
@@ -254,7 +257,7 @@ func MakeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 }
 
 func renderTemplate(w http.ResponseWriter, tmpl string, c *Claim) {
-	err := templates.ExecuteTemplate(w, tmpl+".html", c)
+	err := loadTemplates().ExecuteTemplate(w, tmpl+".html", c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
