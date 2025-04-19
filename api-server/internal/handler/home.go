@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,18 +27,13 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-var (
-	gvr = schema.GroupVersionResource{
-		Group:    "platform.example.org",
-		Version:  "v1alpha1",
-		Resource: "storage",
-	}
-)
+type Resource string
 
 type KubeClient struct {
 	DynamicClient dynamic.Interface
 	Clientset     kubernetes.Interface
 	Scheme        *runtime.Scheme
+	GVRs          map[Resource]schema.GroupVersion
 }
 
 func NewKubernetesClient() *KubeClient {
@@ -65,6 +63,12 @@ func NewKubernetesClient() *KubeClient {
 		DynamicClient: c,
 		Clientset:     cs,
 		Scheme:        runtime.NewScheme(),
+		GVRs: map[Resource]schema.GroupVersion{
+			"storage": { // K8s API
+				Group:   "platform.example.org",
+				Version: "v1alpha1",
+			},
+		},
 	}
 }
 
@@ -76,6 +80,8 @@ type Handler struct {
 func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 
+	t := strings.ToLower(r.FormValue("type"))
+	ns := r.FormValue("username")
 	// Validating the name to match Kubernetes DNS subdomain rules
 	name := strings.ToLower(r.FormValue("name"))
 	if !validDNSName.MatchString(name) || len(name) > 63 {
@@ -83,10 +89,20 @@ func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	gv, ok := h.KubeClient.GVRs[Resource(t)]
+	if !ok {
+		http.Error(w, fmt.Sprintf("❌ Resource *%v* not found in supported GVRs", t), http.StatusInternalServerError)
+	}
+
 	c := &Claim{
-		Name:      name,
+		Name: name,
+		GVR: schema.GroupVersionResource{
+			Group:    gv.Group,
+			Version:  gv.Version,
+			Resource: t,
+		},
 		Region:    r.FormValue("region"),
-		Namespace: r.FormValue("username"),
+		Namespace: ns,
 	}
 
 	defer func() {
@@ -103,15 +119,22 @@ func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 
 	h.Metrics.ClaimsSubmitted.WithLabelValues(c.Region, c.Namespace).Inc()
 
-	http.Redirect(w, r, "/view/"+name, http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf("/claims?ns=%s", ns), http.StatusFound)
+}
+
+type Claim struct {
+	Name      string
+	GVR       schema.GroupVersionResource
+	Region    string
+	Namespace string
 }
 
 // apply uses client-go to create a Crossplane Claim based on user request
 func (c *Claim) apply(ctx context.Context, kube *KubeClient) error {
 	claim := &unstructured.Unstructured{}
 	// sets the metadata on the object being created
-	claim.SetAPIVersion("platform.example.org/v1alpha1")
-	claim.SetKind("Storage")
+	claim.SetAPIVersion(fmt.Sprintf("%s/%s", c.GVR.Group, c.GVR.Version))
+	claim.SetKind(cases.Title(language.English).String(c.GVR.Resource))
 	claim.SetName(c.Name)
 	claim.SetNamespace(c.Namespace)
 	err := unstructured.SetNestedField(claim.Object, c.Region, "spec", "location")
@@ -119,7 +142,7 @@ func (c *Claim) apply(ctx context.Context, kube *KubeClient) error {
 		return fmt.Errorf("error setting spec.location: %w", err)
 	}
 
-	discoveryClient, err := kube.Clientset.Discovery().ServerResourcesForGroupVersion("platform.example.org/v1alpha1")
+	discoveryClient, err := kube.Clientset.Discovery().ServerResourcesForGroupVersion(fmt.Sprintf("%s/%s", c.GVR.Group, c.GVR.Version))
 	if err != nil {
 		return fmt.Errorf("❌ Discovery error: %w", err)
 	}
@@ -128,7 +151,7 @@ func (c *Claim) apply(ctx context.Context, kube *KubeClient) error {
 	}
 
 	// sets the target API endpoint for the request: POST /apis/platform.example.org/v1alpha1/namespaces/dev-user/storage
-	if _, err := kube.DynamicClient.Resource(gvr).Namespace(c.Namespace).Create(ctx, claim, metav1.CreateOptions{}); err != nil {
+	if _, err := kube.DynamicClient.Resource(c.GVR).Namespace(c.Namespace).Create(ctx, claim, metav1.CreateOptions{}); err != nil {
 		log.Printf("❌ Failed to create claim: %v", err)
 		return fmt.Errorf("error creating the claim: %w", err)
 	}
@@ -137,8 +160,19 @@ func (c *Claim) apply(ctx context.Context, kube *KubeClient) error {
 
 func (h *Handler) GetClaims(w http.ResponseWriter, r *http.Request) {
 	ns := r.URL.Query().Get("ns")
+	// TODO: Check if namespace exists
 	if ns == "" {
 		ns = "dev-user"
+	}
+	rs := r.URL.Query().Get("type")
+	gv, ok := h.KubeClient.GVRs[Resource(rs)]
+	if !ok {
+		http.Error(w, fmt.Sprintf("❌ Resource *%v* not found in supported GVRs", rs), http.StatusInternalServerError)
+	}
+	gvr := schema.GroupVersionResource{
+		Group:    gv.Group,
+		Version:  gv.Version,
+		Resource: rs,
 	}
 	list, err := h.KubeClient.
 		DynamicClient.
@@ -179,12 +213,6 @@ func (h *Handler) GetClaims(w http.ResponseWriter, r *http.Request) {
 	if err := templates.ExecuteTemplate(w, "list.html", cv); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-}
-
-type Claim struct {
-	Name      string
-	Region    string
-	Namespace string
 }
 
 type ClaimView struct {
