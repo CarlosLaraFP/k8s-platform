@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	h "api-server/internal/handler"
+	m "api-server/internal/metrics"
 )
 
 func main() {
@@ -33,6 +34,7 @@ func main() {
 	r.Get("/claims", h.GetClaims)
 
 	h.NewKubernetesClient()
+	m.StartPrometheus(r)
 
 	fmt.Println("Starting server...")
 	log.Fatal(http.ListenAndServe(":8080", r))

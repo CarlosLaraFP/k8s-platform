@@ -1,6 +1,7 @@
-package internal
+package handler
 
 import (
+	"api-server/internal/metrics"
 	"context"
 	"fmt"
 	"html/template"
@@ -154,8 +155,12 @@ func SubmitHandler(w http.ResponseWriter, r *http.Request, name string) {
 
 	if err := c.apply(r.Context()); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		metrics.ClaimsFailed.WithLabelValues(c.Region, c.Namespace).Inc()
 		return
 	}
+
+	metrics.ClaimsSubmitted.WithLabelValues(c.Region, c.Namespace).Inc()
+
 	http.Redirect(w, r, "/view/"+name, http.StatusFound)
 }
 
