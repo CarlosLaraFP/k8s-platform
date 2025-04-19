@@ -1,9 +1,15 @@
 <h1>Crossplane Self-Service</h1>
 
-<h2>Submit a request for storage below</h2>
+<h2>Submit a request for cloud resources below</h2>
 
 <form method="POST" action="/submit">
-    <label for="name">Storage Name:</label>
+    <label for="type">Type:</label>
+    <select name="type" id="type">
+        <option value="Storage">Storage</option>
+        <option value="Compute">Compute</option>
+    </select><br/><br/>
+
+    <label for="name">Name:</label>
     <input type="text" name="name" id="name" placeholder="mystorage" pattern="[a-z0-9]([-a-z0-9]*[a-z0-9])?" required/><br/><br/>
 
     <label for="username">Username:</label>
@@ -15,5 +21,5 @@
         <option value="EU">EU</option>
     </select><br/><br/>
 
-    <input type="submit" value="Request Storage">
+    <input type="submit" value="Submit Request">
 </form>
