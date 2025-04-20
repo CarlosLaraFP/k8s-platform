@@ -2,6 +2,9 @@ package handler
 
 import (
 	"api-server/internal/metrics"
+	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,7 +12,33 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
+
+type FakeClaimer struct {
+	ShouldFail bool
+	GVRs       map[Resource]schema.GroupVersion
+}
+
+func (f *FakeClaimer) CreateClaim(ctx context.Context, c *Claim) error {
+	if f.ShouldFail {
+		return fmt.Errorf("simulated failure")
+	}
+	return nil
+}
+
+func (f *FakeClaimer) GetClaims(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func (f *FakeClaimer) VerifyGVR(r Resource) *schema.GroupVersion {
+	gv, ok := f.GVRs[r]
+	if !ok {
+		log.Printf("❌ Resource *%v* not found in supported GVRs", r)
+		return nil
+	}
+	return &gv
+}
 
 func TestSubmitHandler_InvalidName(t *testing.T) {
 	// Explicitly simulating what a browser does:
@@ -24,8 +53,8 @@ func TestSubmitHandler_InvalidName(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	h := &Handler{
-		KubeClient: new(KubeClient),      // not used in this test
-		Metrics:    new(metrics.Metrics), // not used in this test
+		Claimer: new(FakeClaimer),     // not used in this test
+		Metrics: new(metrics.Metrics), // not used in this test
 	}
 
 	h.SubmitHandler(rr, req)
@@ -43,8 +72,8 @@ func TestSubmitHandler_InvalidResource(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	h := &Handler{
-		KubeClient: new(KubeClient),      // not used in this test
-		Metrics:    new(metrics.Metrics), // not used in this test
+		Claimer: new(FakeClaimer),     // not used in this test
+		Metrics: new(metrics.Metrics), // not used in this test
 	}
 
 	h.SubmitHandler(rr, req)
@@ -52,8 +81,8 @@ func TestSubmitHandler_InvalidResource(t *testing.T) {
 }
 
 func TestSubmitHandler_InvalidNamespace(t *testing.T) {
-	body := strings.NewReader("type=Storage&name=mystorage&username=missing&region=US")
-	req := httptest.NewRequest(http.MethodPost, "/submit", body)
+	//body := strings.NewReader("type=Storage&name=mystorage&username=missing&region=US")
+	req := httptest.NewRequest(http.MethodPost, "/submit", strings.NewReader(("")))
 	_ = req.ParseForm()
 	req.Form.Set("type", "Storage")
 	req.Form.Set("name", "mystorage")
@@ -62,8 +91,16 @@ func TestSubmitHandler_InvalidNamespace(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	h := &Handler{
-		KubeClient: NewKubernetesClient(),
-		Metrics:    metrics.InitPrometheus(),
+		Claimer: &FakeClaimer{
+			ShouldFail: true,
+			GVRs: map[Resource]schema.GroupVersion{
+				"storage": {
+					Group:   "platform.example.org",
+					Version: "v1alpha1",
+				},
+			},
+		},
+		Metrics: metrics.InitPrometheus(),
 	}
 
 	h.SubmitHandler(rr, req)

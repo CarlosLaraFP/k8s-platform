@@ -29,8 +29,8 @@ func main() {
 	r.Handle("/metrics", promhttp.HandlerFor(metrics.Registry, promhttp.HandlerOpts{}))
 
 	handler := &h.Handler{
-		KubeClient: client,
-		Metrics:    metrics,
+		Claimer: client, // client is NewKubernetesClient()
+		Metrics: metrics,
 	}
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
