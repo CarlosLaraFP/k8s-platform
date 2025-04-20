@@ -79,7 +79,9 @@ type Handler struct {
 
 func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
-
+	// When the form is submitted in the browser via HTML,
+	// the browser encodes the fields into a body like "name=foo&username=bar&type=storage"
+	// and sets Content-Type: application/x-www-form-urlencoded
 	t := strings.ToLower(r.FormValue("type"))
 	ns := r.FormValue("username")
 	// Validating the name to match Kubernetes DNS subdomain rules
@@ -91,7 +93,7 @@ func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 
 	gv, ok := h.KubeClient.GVRs[Resource(t)]
 	if !ok {
-		http.Error(w, fmt.Sprintf("❌ Resource *%v* not found in supported GVRs", t), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("❌ Resource *%v* not found in supported GVRs", t), http.StatusBadRequest)
 	}
 
 	c := &Claim{
