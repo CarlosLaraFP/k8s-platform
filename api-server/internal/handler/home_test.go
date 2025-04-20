@@ -25,8 +25,8 @@ func TestSubmitHandler_InvalidName(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	h := &Handler{
-		KubeClient: &KubeClient{}, // not used in this test
-		Metrics:    metrics.InitPrometheus(),
+		KubeClient: new(KubeClient),      // not used in this test
+		Metrics:    new(metrics.Metrics), // not used in this test
 	}
 
 	h.SubmitHandler(rr, req)
@@ -44,8 +44,8 @@ func TestSubmitHandler_InvalidResource(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	h := &Handler{
-		KubeClient: &KubeClient{}, // not used in this test
-		Metrics:    metrics.InitPrometheus(),
+		KubeClient: new(KubeClient),      // not used in this test
+		Metrics:    new(metrics.Metrics), // not used in this test
 	}
 
 	h.SubmitHandler(rr, req)
