@@ -27,6 +27,20 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
+type ClaimView struct {
+	Name      string
+	Location  string
+	Namespace string
+	Status    string
+}
+
+type Claim struct {
+	Name      string
+	GVR       schema.GroupVersionResource
+	Region    string
+	Namespace string
+}
+
 type Resource string
 
 type KubeClient struct {
@@ -87,13 +101,16 @@ func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 	// Validating the name to match Kubernetes DNS subdomain rules
 	name := strings.ToLower(r.FormValue("name"))
 	if !validDNSName.MatchString(name) || len(name) > 63 {
+		log.Printf("❌ Invalid claim name: %s", name)
 		http.Error(w, "Invalid claim name: must match [a-z0-9]([-a-z0-9]*[a-z0-9])? and < 64 characters", http.StatusBadRequest)
 		return
 	}
 
 	gv, ok := h.KubeClient.GVRs[Resource(t)]
 	if !ok {
+		log.Printf("❌ Resource *%v* not found in supported GVRs", t)
 		http.Error(w, fmt.Sprintf("❌ Resource *%v* not found in supported GVRs", t), http.StatusBadRequest)
+		return
 	}
 
 	c := &Claim{
@@ -122,20 +139,6 @@ func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 	h.Metrics.ClaimsSubmitted.WithLabelValues(c.Region, c.Namespace).Inc()
 
 	http.Redirect(w, r, fmt.Sprintf("/claims?ns=%s", ns), http.StatusFound)
-}
-
-type ClaimView struct {
-	Name      string
-	Location  string
-	Namespace string
-	Status    string
-}
-
-type Claim struct {
-	Name      string
-	GVR       schema.GroupVersionResource
-	Region    string
-	Namespace string
 }
 
 // apply uses client-go to create a Crossplane Claim based on user request
