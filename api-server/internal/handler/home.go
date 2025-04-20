@@ -41,6 +41,10 @@ type Claim struct {
 	Namespace string
 }
 
+type ClaimCreator interface {
+	CreateClaim(ctx context.Context, c *Claim) error
+}
+
 type Resource string
 
 type KubeClient struct {
