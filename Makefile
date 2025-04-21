@@ -51,10 +51,12 @@ crossplane-provider-ci:
 
 docker:
 	docker build -t $(IMAGE_NAME) claim-controller/.
+	docker build -t api-server:latest api-server/.
 	docker build -t function-docker-build:xpkg function-docker-build/.
 
 kind-load:
 	kind load docker-image $(IMAGE_NAME) --name $(APP_NAME)
+	kind load docker-image api-server:latest --name $(APP_NAME)
 	kind load docker-image function-docker-build:xpkg --name k8s-platform
 
 helm-install:
