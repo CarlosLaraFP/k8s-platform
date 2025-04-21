@@ -28,7 +28,6 @@ func (f *FakeClaimer) CreateClaim(ctx context.Context, c *Claim) error {
 }
 
 func (f *FakeClaimer) GetClaims(w http.ResponseWriter, r *http.Request) {
-
 }
 
 func (f *FakeClaimer) VerifyGVR(r Resource) *schema.GroupVersion {
@@ -107,5 +106,3 @@ func TestSubmitHandler_InvalidNamespace(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 	assert.Equal(t, 1, int(testutil.ToFloat64(h.Metrics.ClaimsFailed.WithLabelValues("US", "missing"))))
 }
-
-// We can mock Kube.DynamicClient with github.com/stretchr/testify/mock later for deeper tests.

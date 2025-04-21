@@ -237,7 +237,7 @@ func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 
 	h.Metrics.ClaimsSubmitted.WithLabelValues(c.Region, c.Namespace).Inc()
 
-	http.Redirect(w, r, fmt.Sprintf("/claims?ns=%s", ns), http.StatusFound)
+	http.Redirect(w, r, fmt.Sprintf("/claims?ns=%s&type=%s", ns, t), http.StatusFound)
 }
 
 func loadTemplates() *template.Template {
