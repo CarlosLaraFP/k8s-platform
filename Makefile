@@ -61,6 +61,7 @@ kind-load:
 
 helm-install:
 	helm upgrade --install claim-controller ./claim-controller-chart --namespace=crossplane-system
+	helm upgrade --install api-server ./api-server-chart --namespace=crossplane-system
 
 apply:
 	kubectl apply -f infra/functions/patch-and-transform.yaml
