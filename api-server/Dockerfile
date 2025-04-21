@@ -1,7 +1,7 @@
-FROM golang:1.24 as builder
+FROM golang:1.24 AS builder
 WORKDIR /app
 COPY . .
-RUN go build -o api-server ./cmd
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix 'static' -o api-server ./cmd
 
 FROM gcr.io/distroless/static
 COPY --from=builder /app/api-server /api-server

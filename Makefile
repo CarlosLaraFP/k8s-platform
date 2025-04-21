@@ -96,6 +96,7 @@ crossplane-package:
 
 helm-uninstall:
 	helm uninstall claim-controller --namespace=crossplane-system
+	helm uninstall api-server --namespace=crossplane-system
 
 kind-delete:
 	kind delete cluster --name $(APP_NAME)
