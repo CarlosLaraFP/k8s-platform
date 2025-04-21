@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 )
@@ -150,11 +151,18 @@ func (k *KubeClient) VerifyGVR(r Resource) *schema.GroupVersion {
 }
 
 func NewKubernetesClient() *KubeClient {
-	kubeconfig := filepath.Join(homedir.HomeDir(), ".kube", "config")
+	var config *rest.Config
+	var err error
 
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	// First try in-cluster config (used in pods)
+	config, err = rest.InClusterConfig()
 	if err != nil {
-		log.Fatalf("Error loading kubeconfig: %v", err)
+		// Fallback to local config (used when running locally with KinD)
+		kubeconfig := filepath.Join(homedir.HomeDir(), ".kube", "config")
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			log.Fatalf("Unable to load kubeconfig: %v", err)
+		}
 	}
 
 	cs, err := kubernetes.NewForConfig(config)
