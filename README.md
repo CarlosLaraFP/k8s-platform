@@ -28,6 +28,18 @@ Developer self-service Kubernetes platform built with Crossplane on Karpenter-ba
 
 ---
 
+## Roadmap
+
+- Kubeflow to enable self-service for data scientists, including Jupyter notebooks backed by persistent volume claims (PVCs)
+- Multi-AZ EC2 Spot node groups with user-provided flag for GPU instances
+- Pod disruption buckets (PDBs) to limit blast radius of EC2 Spot termination signals
+- GPU taint prevents scheduling of non-GPU workloads; toleration patched dynamically based on user input
+- Pod anti-affinity defaults for high availability and fault tolerance
+- Argo Workflows for DAG-based workloads (user & internal), including automatic Docker build, tag, and push to ECR
+- Admission controller to validate IAM least privilege access; mutation can patch dynamically
+
+---
+
 ## Setup
 
 ```bash
