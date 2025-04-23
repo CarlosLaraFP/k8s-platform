@@ -4,7 +4,6 @@ go 1.24.1
 
 require (
 	github.com/go-chi/chi/v5 v5.2.1
-	github.com/google/gnostic v0.7.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/text v0.21.0
