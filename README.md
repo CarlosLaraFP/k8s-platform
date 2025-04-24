@@ -37,6 +37,7 @@ Developer self-service Kubernetes platform built with Crossplane on Karpenter-ba
 - Pod anti-affinity defaults for high availability and fault tolerance
 - Argo Workflows for DAG-based workloads (user & internal), including automatic Docker build, tag, and push to ECR
 - Admission controller to validate IAM least privilege access; mutation can patch dynamically
+- Extend Prometheus metrics and add Grafana dashboard with notifications
 
 ---
 
