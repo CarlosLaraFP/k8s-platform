@@ -34,7 +34,7 @@ func main() {
 	}
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "web/templates/index.html")
+		http.ServeFile(w, r, "/web/templates/index.html")
 	})
 	// This tells Chi to match paths like /view/MyClaim, and now MakeHandler will receive the correct r.URL.Path value and extract MyClaim.
 	r.Get("/view/{name}", h.MakeHandler(h.ViewHandler))

@@ -5,4 +5,5 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix 'static' -o api-server .
 
 FROM gcr.io/distroless/static
 COPY --from=builder /app/api-server /api-server
+COPY --from=builder /app/web /web
 ENTRYPOINT ["/api-server"]
