@@ -52,12 +52,12 @@ crossplane-provider-ci:
 docker:
 	docker build -t $(IMAGE_NAME) claim-controller/.
 	docker build -t api-server:latest api-server/.
-	docker build -t function-docker-build:xpkg function-docker-build/.
+#	docker build -t function-docker-build:xpkg function-docker-build/.
 
 kind-load:
 	kind load docker-image $(IMAGE_NAME) --name $(APP_NAME)
 	kind load docker-image api-server:latest --name $(APP_NAME)
-	kind load docker-image function-docker-build:xpkg --name k8s-platform
+#	kind load docker-image function-docker-build:xpkg --name k8s-platform
 
 helm-install:
 	helm upgrade --install claim-controller ./claim-controller-chart --namespace=crossplane-system
@@ -87,6 +87,10 @@ metrics-local:
 	kubectl port-forward -n crossplane-system deployment/claim-controller 8080:8080
 	curl -s http://localhost:8080/metrics | grep claims
 
+control-plane-local:
+	kubectl port-forward svc/api-server 8080:8080 -n crossplane-system
+	curl http://localhost:8080/metrics
+
 crossplane-package:
 	docker build -t $(FUNCTION_NAME):xpkg $(FUNCTION_NAME)/.
 	docker tag $(FUNCTION_NAME):xpkg $(LOCAL_REGISTRY)/$(FUNCTION_NAME):xpkg
@@ -111,8 +115,8 @@ terraform-helm-clean:
 terraform-destroy:
 	cd terraform && terraform destroy -auto-approve
 
-deploy-ci: kind-create crossplane-install crossplane-provider-ci docker kind-load helm-install
+deploy-ci: kind-create crossplane-install crossplane-provider-ci docker kind-load apply helm-install
 
-deploy: kind-create crossplane-install crossplane-provider docker kind-load helm-install
+deploy: kind-create crossplane-install crossplane-provider docker kind-load apply helm-install
 
 destroy: helm-uninstall kind-delete

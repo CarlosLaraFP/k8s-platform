@@ -250,10 +250,10 @@ func (h *Handler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 
 func loadTemplates() *template.Template {
 	return template.Must(template.ParseFiles(
-		"web/templates/view.html",
-		"web/templates/edit.html",
-		"web/templates/index.html",
-		"web/templates/list.html",
+		"/web/templates/view.html",
+		"/web/templates/edit.html",
+		"/web/templates/index.html",
+		"/web/templates/list.html",
 	))
 }
 
