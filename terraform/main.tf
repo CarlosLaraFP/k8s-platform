@@ -23,7 +23,8 @@ locals {
   cluster_version = "1.32"
   vpc_cidr = "10.0.0.0/16"
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
-  ecr_repo = "claim-controller"
+  ecr_claim_controller = "claim-controller"
+  ecr_api_server = "api-server"
 }
 
 module "eks" {
@@ -116,8 +117,13 @@ resource "aws_iam_role_policy_attachment" "ecr_pull" {
 }
 
 resource "aws_ecr_repository" "claim-controller" {
-  name = local.ecr_repo
+  name = local.ecr_claim_controller
 }
+
+resource "aws_ecr_repository" "api-server" {
+  name = local.ecr_api_server
+}
+
 data "aws_caller_identity" "current" {}
 data "aws_ecr_authorization_token" "token" {}
 
@@ -136,8 +142,20 @@ resource "docker_image" "controller" {
   }
 }
 
-resource "docker_registry_image" "app" {
+resource "docker_registry_image" "controller_app" {
   name          = docker_image.controller.name
+  keep_remotely = false # Prevent deletion on destroy
+}
+
+resource "docker_image" "api_server" {
+  name = "${aws_ecr_repository.api-server.repository_url}:latest"
+  build {
+    context = "${path.module}/../api-server"
+  }
+}
+
+resource "docker_registry_image" "api_server_app" {
+  name          = docker_image.api_server.name
   keep_remotely = false # Prevent deletion on destroy
 }
 
@@ -223,6 +241,42 @@ resource "helm_release" "claim-controller" {
   set {
     name  = "image.repository"
     value = aws_ecr_repository.claim-controller.repository_url
+  }
+
+  set {
+    name  = "image.pullPolicy"
+    value = "Always" # pull from ECR
+  }
+
+  set {
+    name = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = aws_iam_role.irsa.arn
+  }
+}
+
+resource "helm_release" "api-server" {
+  depends_on = [
+    module.eks, 
+    aws_ecr_repository.api-server, 
+    docker_image.api_server, 
+    helm_release.crossplane, 
+    null_resource.kubectl_apply
+  ]
+
+  name       = "api-server"
+  chart      = "${path.module}/../api-server-chart"
+  namespace  = "crossplane-system"
+  create_namespace = true
+  atomic = true
+  cleanup_on_fail = true
+
+  values = [
+    file("${path.module}/../api-server-chart/values.yaml")
+  ]
+
+  set {
+    name  = "image.repository"
+    value = aws_ecr_repository.api-server.repository_url
   }
 
   set {
