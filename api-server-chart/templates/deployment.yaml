@@ -12,6 +12,7 @@ spec:
       labels:
         app: api-server
     spec:
+      serviceAccountName: {{ include "api-server.fullname" . }}-sa  # The default ServiceAccount cannot create custom resources unless explicitly allowed.
       containers:
       - name: api-server
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

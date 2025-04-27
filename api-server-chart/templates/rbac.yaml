@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ServiceAccount  # Every Pod in Kubernetes runs under a ServiceAccount (by default: system:serviceaccount:crossplane-system:default)
+metadata:
+  name: {{ include "api-server.fullname" . }}-sa
+  namespace: {{ .Release.Namespace }} #  Helm’s built-in object for accessing release metadata (The namespace where Helm is installing resources)
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "api-server.fullname" . }}-cr
+rules:
+  - apiGroups: ["platform.example.org"]
+    resources: ["storage", "compute"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "api-server.fullname" . }}-crb
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "api-server.fullname" . }}-sa
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ include "api-server.fullname" . }}-cr
+  apiGroup: rbac.authorization.k8s.io
