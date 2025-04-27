@@ -282,8 +282,8 @@ func MakeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.Handl
 	}
 }
 
-func renderTemplate(w http.ResponseWriter, tmpl string, c *Claim) {
-	err := loadTemplates().ExecuteTemplate(w, tmpl+".html", c)
+func renderTemplate(w http.ResponseWriter, page string, c *Claim) {
+	err := loadTemplates().ExecuteTemplate(w, fmt.Sprintf("/web/templates/%s.html", page), c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
