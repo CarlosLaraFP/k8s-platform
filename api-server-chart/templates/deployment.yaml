@@ -2,6 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: api-server
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+#  annotations:
+#    rollme: "{{ now | quote }}"   # triggers rollout on every helm upgrade
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -15,7 +19,7 @@ spec:
       serviceAccountName: {{ include "api-server.fullname" . }}-sa  # The default ServiceAccount cannot create custom resources unless explicitly allowed.
       containers:
       - name: api-server
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        image: "{{ .Values.image.uri }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
         - containerPort: 8080
