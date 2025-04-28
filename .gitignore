@@ -1,7 +1,10 @@
 aws-credentials.txt
-terraform/.terraform
-terraform/.terraform.lock.hcl
-terraform/terraform.tfstate*
+infra-eks/.terraform
+infra-eks/.terraform.lock.hcl
+infra-eks/terraform.tfstate*
+infra-k8s/.terraform
+infra-k8s/.terraform.lock.hcl
+infra-k8s/terraform.tfstate*
 function-docker-build/tempDockerfile
 function-docker-build/main.py
 function-docker-build/function-docker-build.xpkg
