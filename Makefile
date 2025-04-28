@@ -13,10 +13,16 @@ test:
 	cd claim-controller && go mod tidy
 	cd claim-controller && go test ./... -v
 
-terraform-apply:
-	cd terraform && terraform init
-	cd terraform && terraform plan
-	cd terraform && terraform apply --auto-approve
+terraform-apply-eks:
+	cd infra-eks && terraform init
+	cd infra-eks && terraform plan
+	cd infra-eks && terraform apply --auto-approve
+
+terraform-apply-k8s:
+	cd infra-k8s && terraform init
+	cd infra-k8s && terraform apply -target=null_resource.gateway_api --auto-approve
+	cd infra-k8s && terraform plan
+	cd infra-k8s && terraform apply --auto-approve
 
 kind-install:
 	curl -Lo kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
@@ -112,8 +118,11 @@ terraform-helm-clean:
 	cd terraform && terraform destroy -target helm_release.platform -auto-approve
 	terraform apply -target helm_release.platform -auto-approve
 
-terraform-destroy:
-	cd terraform && terraform destroy -auto-approve
+terraform-destroy-k8s:
+	cd infra-k8s && terraform destroy -auto-approve
+
+terraform-destroy-eks:
+	cd infra-eks && terraform destroy -auto-approve
 
 deploy-ci: kind-create crossplane-install crossplane-provider-ci docker kind-load apply helm-install
 

@@ -3,11 +3,11 @@ replicaCount: 1
 
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
-  repository: api-server
+  uri: "api-server:latest"
   # This sets the pull policy for images.
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
+  #tag: "latest"
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
@@ -31,5 +31,5 @@ resources:
     cpu: "500m"
 
 service:
-  type: NodePort
+  type: ClusterIP
   port: 8080
