@@ -30,6 +30,7 @@ Developer self-service Kubernetes platform built with Crossplane on Karpenter-ba
 
 ## Roadmap
 
+- Ingress -> Gateway API on EKS
 - Kubeflow to enable self-service for data scientists, including Jupyter notebooks backed by persistent volume claims (PVCs)
 - Multi-AZ EC2 Spot node groups with user-provided flag for GPU instances
 - Pod disruption buckets (PDBs) to limit blast radius of EC2 Spot termination signals
