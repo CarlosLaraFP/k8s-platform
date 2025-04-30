@@ -80,6 +80,12 @@ apply:
 	kubectl apply -f infra/modeldeployment-xrd.yaml
 	kubectl apply -f infra/modeldeployment-composition.yaml
 
+	kubectl label node $(APP_NAME)-control-plane ingress-ready=true
+	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/kind/deploy.yaml
+	kubectl wait -n ingress-nginx --for=condition=Available deployment/ingress-nginx-controller --timeout=120s
+	kubectl wait -n ingress-nginx--for=condition=Ready pod --selector=app.kubernetes.io/component=admission-webhook --timeout=60s
+	kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8080:80
+
 argocd-install:
 	kubectl create namespace argocd
 	kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
