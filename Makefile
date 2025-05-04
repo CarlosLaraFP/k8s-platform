@@ -83,8 +83,7 @@ apply:
 	kubectl label node $(APP_NAME)-control-plane ingress-ready=true
 	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/kind/deploy.yaml
 	kubectl wait -n ingress-nginx --for=condition=Available deployment/ingress-nginx-controller --timeout=120s
-	kubectl wait -n ingress-nginx --for=condition=Complete pod --selector=app.kubernetes.io/component=admission-webhook --timeout=60s
-	sleep 30
+	sleep 60
 #	kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8080:80
 
 argocd-install:
