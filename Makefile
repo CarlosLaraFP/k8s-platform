@@ -41,12 +41,12 @@ crossplane-install:
 	kubectl wait --for=condition=Available deployment/crossplane -n crossplane-system --timeout=120s
 	kubectl get pods -n crossplane-system
 	kubectl api-resources | grep crossplane
-	kubectl apply -f infra/ec2-provider.yaml
-	kubectl apply -f infra/s3-provider.yaml 
-	kubectl apply -f infra/dynamodb-provider.yaml
-	sleep 120
+	kubectl apply --server-side -f infra/ec2-provider.yaml
+	kubectl apply --server-side -f infra/s3-provider.yaml 
+	kubectl apply --server-side -f infra/dynamodb-provider.yaml
+	sleep 30
 	kubectl get providers -o wide
-	kubectl get pods -n crossplane-system -o wide
+	kubectl describe provider provider-aws-dynamodb
 #	kubectl wait --for=condition=Healthy provider/provider-aws-dynamodb --timeout=300s
 #	kubectl wait --for=condition=Healthy provider/provider-aws-ec2 --timeout=300s
 #	kubectl wait --for=condition=Healthy provider/provider-aws-s3 --timeout=300s
