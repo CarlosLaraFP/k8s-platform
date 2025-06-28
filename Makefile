@@ -44,9 +44,12 @@ crossplane-install:
 	kubectl apply -f infra/ec2-provider.yaml
 	kubectl apply -f infra/s3-provider.yaml 
 	kubectl apply -f infra/dynamodb-provider.yaml
-	kubectl wait --for=condition=Healthy provider/provider-aws-dynamodb --timeout=300s
-	kubectl wait --for=condition=Healthy provider/provider-aws-ec2 --timeout=300s
-	kubectl wait --for=condition=Healthy provider/provider-aws-s3 --timeout=300s
+	sleep 120
+	kubectl get providers -o wide
+	kubectl get pods -n crossplane-system -o wide
+#	kubectl wait --for=condition=Healthy provider/provider-aws-dynamodb --timeout=300s
+#	kubectl wait --for=condition=Healthy provider/provider-aws-ec2 --timeout=300s
+#	kubectl wait --for=condition=Healthy provider/provider-aws-s3 --timeout=300s
 #	kubectl wait --for=condition=Installed provider/provider-aws-dynamodb --timeout=200s
 
 crossplane-provider:
@@ -55,7 +58,6 @@ crossplane-provider:
 
 crossplane-provider-ci:
 	kubectl create secret generic aws-secret -n crossplane-system --from-file=creds=./mock-aws-credentials.txt
-	sleep 30
 	kubectl apply -f infra/provider-config.yaml
 
 docker:
