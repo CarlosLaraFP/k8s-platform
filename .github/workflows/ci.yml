@@ -36,9 +36,8 @@ jobs:
     - name: Install KinD
       run: make kind-install
 
-    - name: Deploy all Crossplane resources
-      run: make deploy-ci
+    #- name: Deploy all Crossplane resources
+    #  run: make deploy-ci
 
-    - name: Cleanup
-      if: always()
-      run: make destroy
+    #- name: Cleanup
+    #  run: make destroy
