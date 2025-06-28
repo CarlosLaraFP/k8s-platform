@@ -37,7 +37,9 @@ crossplane-install:
 	helm repo update
 	helm install crossplane crossplane-stable/crossplane -n crossplane-system --create-namespace \
 	  --set image.repository=crossplane/crossplane \
-	  --set image.tag=v1.19.1
+	  --set image.tag=v1.19.1 \
+	  --set securityContext.runAsUser=2000 \
+	  --set securityContext.fsGroup=2000
 	kubectl wait --for=condition=Available deployment/crossplane -n crossplane-system --timeout=120s
 	kubectl get pods -n crossplane-system
 	kubectl api-resources | grep crossplane
