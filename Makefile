@@ -35,7 +35,7 @@ kind-create:
 crossplane-install:
 	helm repo add crossplane-stable https://charts.crossplane.io/stable
 	helm repo update
-	helm upgrade install crossplane crossplane-stable/crossplane -n crossplane-system --create-namespace \
+	helm install crossplane crossplane-stable/crossplane -n crossplane-system --create-namespace \
 	  --set image.repository=crossplane/crossplane \
 	  --set image.tag=v1.19.1 \
 	  --set args='{--cache-dir=/var/run/crossplane}'
